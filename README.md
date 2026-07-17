@@ -145,17 +145,18 @@ tour-resq/
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/check-price` | Check prices (manual input) |
-| `POST` | `/api/check-price-ocr` | Check prices (photo upload) |
-| `POST` | `/api/detect-scam` | Detect scam patterns |
-| `POST` | `/api/translate` | Domain-adapted translation |
-| `POST` | `/api/translate/confrontation` | Show-to-vendor translation |
-| `GET` | `/api/phrasebook` | Offline phrasebook |
-| `POST` | `/api/sos` | Emergency SOS dispatch |
-| `GET` | `/api/emergency-info` | Hotline numbers |
-| `GET` | `/api/languages` | Supported languages |
-| `GET` | `/api/translations` | Batch UI translations |
-| `GET` | `/api/onboarding` | Contextual tips for new arrivals |
+| `POST` | `/api/v1/analyze-situation` | Combined price + scam analysis from text |
+| `POST` | `/api/v1/check-price` | DB-backed price check with Z-score |
+| `POST` | `/api/v1/analyze-vision` | Vision AI for menu/receipt forgery detection |
+| `POST` | `/api/v1/translate` | Domain-adapted translation |
+| `POST` | `/api/v1/translate/confrontation` | Show-to-vendor translation |
+| `GET`  | `/api/v1/phrasebook` | Offline phrasebook |
+| `POST` | `/api/v1/sos` | Emergency SOS dispatch with GPS |
+| `GET`  | `/api/v1/emergency-info` | Hotline numbers (works offline) |
+| `POST` | `/api/v1/dispatch-report` | Send report to nearest authority |
+| `GET`  | `/api/v1/heatmap/data` | Crowdsourced scam heatmap data |
+| `GET`  | `/api/v1/languages` | Supported languages |
+| `GET`  | `/api/v1/translations` | Batch UI translations |
 
 ## AI Safety & Trust
 

@@ -1,94 +1,36 @@
-from fastapi import APIRouter, File, UploadFile, Form, BackgroundTasks
+"""
+Tour-resQ API Routes
+====================
+All REST endpoints, synchronized with README documentation.
+"""
+from fastapi import APIRouter, BackgroundTasks
 from pydantic import BaseModel
-import os
-import hashlib
 from typing import Optional
+import hashlib
 
-from app.engine.price_checker import analyze_price_context
+from app.engine.price_checker import analyze_price_context, check_single_price
 from app.engine.scam_detector import detect_scam_with_ai
 from app.engine.defense_scripts import generate_defense_script
 from app.engine.blackbox import log_incident, get_heatmap_data
 from app.engine.vision_analyzer import analyze_menu_layout
 from app.engine.authority_router import find_nearest_authority, generate_official_report_vi
-from app.i18n.translations import t
+from app.engine.translator import translate_text, translate_for_confrontation, get_phrasebook
+from app.engine.sos_dispatcher import dispatch_sos, get_emergency_info
+from app.i18n.translations import t, get_supported_languages, get_all_translations
 
 router = APIRouter()
+
+
+# ─────────────────────────────────────────────────────────
+# REQUEST MODELS
+# ─────────────────────────────────────────────────────────
 
 class SituationRequest(BaseModel):
     description: str
     location: str
     language: str = "en"
-    lat: float = 21.0285 # Default Hoan Kiem for demo
+    lat: float = 21.0285
     lng: float = 105.8542
-
-@router.post("/api/v1/analyze-situation")
-async def analyze_situation(req: SituationRequest, background_tasks: BackgroundTasks):
-    """
-    Advanced Endpoint: Processes a situation description and returns Context-Aware 
-    Pricing assessment, Scam detection, and Defense scripts.
-    Automatically triggers Guardian Blackbox on extreme overcharges.
-    """
-    # 1. Price Context & Markup Analysis
-    price_assessment = await analyze_price_context(
-        description=req.description,
-        location_context=req.location,
-        lang=req.language
-    )
-    
-    # 2. General Scam Detection
-    scam_assessment = await detect_scam_with_ai(
-        description=req.description,
-        lang=req.language,
-        region=req.location
-    )
-    
-    response_data = {
-        "status": "success",
-        "price_assessment": None,
-        "scam_assessment": scam_assessment.to_dict(),
-        "active_defense_script": "",
-        "blackbox_triggered": False,
-        "nearest_authority": None
-    }
-    
-    if price_assessment:
-        response_data["price_assessment"] = price_assessment.dict()
-        
-        # Generate defense script if needed
-        script = generate_defense_script(
-            tier=price_assessment.tier,
-            typology=price_assessment.typology_match,
-            fair_price=price_assessment.max_fair_price * (1 if 'quantity' not in req.description else 1),
-            asked_price=price_assessment.unit_price,
-            item_name=price_assessment.item_name
-        )
-        response_data["active_defense_script"] = script
-        
-        # 3. TRIGGER GUARDIAN BLACKBOX FOR SEVERE INCIDENTS
-        if price_assessment.tier == "EXTREME_OVERCHARGE":
-            response_data["blackbox_triggered"] = True
-            
-            # Find nearest authority
-            nearest_auth, dist_km = find_nearest_authority(req.lat, req.lng)
-            if nearest_auth:
-                response_data["nearest_authority"] = {
-                    "name": nearest_auth.name,
-                    "distance_km": round(dist_km, 2),
-                    "phone": nearest_auth.phone
-                }
-            
-            # Log to blackbox in background
-            audio_hash = hashlib.md5(req.description.encode()).hexdigest()
-            background_tasks.add_task(
-                log_incident,
-                lat=req.lat,
-                lng=req.lng,
-                severity="CRITICAL",
-                scam_type=price_assessment.typology_match or "Severe Overcharge",
-                audio_signature=f"hash_{audio_hash}"
-            )
-            
-    return response_data
 
 class DispatchRequest(BaseModel):
     lat: float
@@ -97,62 +39,226 @@ class DispatchRequest(BaseModel):
     details: str
     authority_name: str
 
-@router.post("/api/v1/dispatch-report")
-async def dispatch_report(req: DispatchRequest):
-    """
-    Simulates sending the official Vietnamese incident report to the selected authority.
-    """
-    import datetime
-    audio_hash = hashlib.md5(req.details.encode()).hexdigest()
-    
-    report_text = generate_official_report_vi(
-        timestamp=datetime.datetime.utcnow().isoformat() + "Z",
-        lat=req.lat,
-        lng=req.lng,
-        scam_type=req.scam_type,
-        details=req.details,
-        audio_signature=f"hash_{audio_hash}"
-    )
-    
-    # In reality, this would send an email/API call to the authority's system.
-    # For now, we print it to console and return success.
-    print(f"\n--- DISPATCHED TO {req.authority_name.upper()} ---")
-    print(report_text)
-    print("------------------------------------------\n")
-    
-    return {
-        "status": "success",
-        "message": f"Report securely dispatched to {req.authority_name}.",
-        "report_content": report_text
-    }
-
-@router.get("/api/v1/heatmap/data")
-async def heatmap_data():
-    """
-    Returns aggregated coordinate data for the Crowdsourced Scam Heatmap.
-    """
-    data = get_heatmap_data()
-    return {"status": "success", "data": data}
-
 class VisionRequest(BaseModel):
     image_base64: str
     language: str = "en"
 
-@router.post("/api/v1/analyze-vision")
-async def analyze_vision(req: VisionRequest):
+class TranslateRequest(BaseModel):
+    text: str
+    source_lang: str
+    target_lang: str
+    context: str = "tourist"
+
+class ConfrontationRequest(BaseModel):
+    text: str
+    tourist_lang: str = "en"
+
+class PriceCheckRequest(BaseModel):
+    item_name: str
+    price: float
+    region: str = "hanoi"
+    venue_type: str = "all"
+
+class SOSRequest(BaseModel):
+    latitude: float
+    longitude: float
+    incident_type: str = "other"
+    description: str = ""
+    language: str = "en"
+    photo_base64: str = ""
+    severity: str = "high"
+
+
+# ─────────────────────────────────────────────────────────
+# CORE ENDPOINTS
+# ─────────────────────────────────────────────────────────
+
+@router.post("/api/v1/analyze-situation")
+async def analyze_situation(req: SituationRequest, background_tasks: BackgroundTasks):
     """
-    Real endpoint to process Base64 images with Gemini Vision.
+    Combined endpoint: price analysis + scam detection + defense script.
+    Automatically triggers Guardian Blackbox on extreme overcharges.
     """
-    vision_assessment = await analyze_menu_layout(
-        image_base64=req.image_base64, 
-        mime_type="image/jpeg", 
+    price_assessment = await analyze_price_context(
+        description=req.description,
+        location_context=req.location,
         lang=req.language
     )
-    
+
+    scam_assessment = await detect_scam_with_ai(
+        description=req.description,
+        lang=req.language,
+        region=req.location
+    )
+
+    response_data = {
+        "status": "success",
+        "price_assessment": None,
+        "scam_assessment": scam_assessment.to_dict(),
+        "active_defense_script": "",
+        "blackbox_triggered": False,
+        "nearest_authority": None
+    }
+
+    if price_assessment:
+        response_data["price_assessment"] = price_assessment.dict()
+
+        script = generate_defense_script(
+            tier=price_assessment.tier,
+            typology=price_assessment.typology_match,
+            fair_price=price_assessment.max_fair_price,
+            asked_price=price_assessment.unit_price,
+            item_name=price_assessment.item_name
+        )
+        response_data["active_defense_script"] = script
+
+        if price_assessment.tier == "EXTREME_OVERCHARGE":
+            response_data["blackbox_triggered"] = True
+            nearest_auth, dist_km = find_nearest_authority(req.lat, req.lng)
+            if nearest_auth:
+                response_data["nearest_authority"] = {
+                    "name": nearest_auth.name,
+                    "distance_km": round(dist_km, 2),
+                    "phone": nearest_auth.phone
+                }
+            audio_hash = hashlib.md5(req.description.encode()).hexdigest()
+            background_tasks.add_task(
+                log_incident,
+                lat=req.lat, lng=req.lng,
+                severity="CRITICAL",
+                scam_type=price_assessment.typology_match or "Severe Overcharge",
+                audio_signature=f"hash_{audio_hash}"
+            )
+
+    return response_data
+
+
+@router.post("/api/v1/check-price")
+async def check_price(req: PriceCheckRequest):
+    """
+    DB-backed price check using Z-score anomaly detection.
+    Returns insufficient_data when sample_count < MIN_SAMPLE_SIZE.
+    """
+    result = check_single_price(
+        item_name=req.item_name,
+        asked_price=req.price,
+        region=req.region,
+        venue_type=req.venue_type
+    )
+    return {"status": "success", "result": result.dict()}
+
+
+@router.post("/api/v1/analyze-vision")
+async def analyze_vision(req: VisionRequest):
+    """Analyze an image (menu/receipt/POS/banknotes) for forgery and price traps."""
+    vision_assessment = await analyze_menu_layout(
+        image_base64=req.image_base64,
+        mime_type="image/jpeg",
+        lang=req.language
+    )
     if not vision_assessment:
-        return {"status": "error", "message": "Failed to analyze image or API key missing."}
-        
+        return {"status": "error", "message": "Vision analysis failed. Check API key."}
+    return {"status": "success", "vision_assessment": vision_assessment.dict()}
+
+
+# ─────────────────────────────────────────────────────────
+# TRANSLATION ENDPOINTS
+# ─────────────────────────────────────────────────────────
+
+@router.post("/api/v1/translate")
+async def translate(req: TranslateRequest):
+    """Domain-adapted translation with cultural context."""
+    result = await translate_text(
+        text=req.text,
+        source_lang=req.source_lang,
+        target_lang=req.target_lang,
+        context=req.context,
+    )
+    return result
+
+
+@router.post("/api/v1/translate/confrontation")
+async def translate_confrontation(req: ConfrontationRequest):
+    """Specialized translation for price disputes — shows Vietnamese to vendor."""
+    result = await translate_for_confrontation(
+        text=req.text,
+        tourist_lang=req.tourist_lang,
+    )
+    return result
+
+
+@router.get("/api/v1/phrasebook")
+async def phrasebook(lang: str = "en"):
+    """Offline phrasebook with tourist language + Vietnamese pairs."""
+    return {"status": "success", "phrasebook": get_phrasebook(lang)}
+
+
+# ─────────────────────────────────────────────────────────
+# SOS ENDPOINTS
+# ─────────────────────────────────────────────────────────
+
+@router.post("/api/v1/sos")
+async def sos(req: SOSRequest):
+    """Emergency SOS dispatch with GPS, context, and auto-translation."""
+    report = await dispatch_sos(
+        latitude=req.latitude,
+        longitude=req.longitude,
+        incident_type=req.incident_type,
+        description=req.description,
+        lang=req.language,
+        photo_base64=req.photo_base64,
+        severity=req.severity,
+    )
+    return {"status": "success", **report.to_dict()}
+
+
+@router.get("/api/v1/emergency-info")
+async def emergency_info(lang: str = "en"):
+    """Emergency hotlines and instructions (works offline)."""
+    return {"status": "success", **get_emergency_info(lang)}
+
+
+# ─────────────────────────────────────────────────────────
+# DISPATCH & HEATMAP
+# ─────────────────────────────────────────────────────────
+
+@router.post("/api/v1/dispatch-report")
+async def dispatch_report(req: DispatchRequest):
+    """Send official Vietnamese incident report to selected authority."""
+    import datetime
+    audio_hash = hashlib.md5(req.details.encode()).hexdigest()
+    report_text = generate_official_report_vi(
+        timestamp=datetime.datetime.utcnow().isoformat() + "Z",
+        lat=req.lat, lng=req.lng,
+        scam_type=req.scam_type,
+        details=req.details,
+        audio_signature=f"hash_{audio_hash}"
+    )
     return {
         "status": "success",
-        "vision_assessment": vision_assessment.dict()
+        "message": f"Report dispatched to {req.authority_name}.",
+        "report_content": report_text
     }
+
+
+@router.get("/api/v1/heatmap/data")
+async def heatmap_data():
+    """Aggregated coordinate data for the Crowdsourced Scam Heatmap."""
+    data = get_heatmap_data()
+    return {"status": "success", "data": data}
+
+
+# ─────────────────────────────────────────────────────────
+# I18N & META ENDPOINTS
+# ─────────────────────────────────────────────────────────
+
+@router.get("/api/v1/languages")
+async def languages():
+    """List of supported languages with metadata."""
+    return {"status": "success", "languages": get_supported_languages()}
+
+
+@router.get("/api/v1/translations")
+async def translations(lang: str = "en"):
+    """Batch UI translations for the given language."""
+    return {"status": "success", "language": lang, "translations": get_all_translations(lang)}

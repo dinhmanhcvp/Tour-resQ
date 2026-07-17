@@ -1,15 +1,25 @@
 """
 Tour-resQ Dynamic Pricing Engine
 ================================
-Uses Gemini as a Context-Aware Knowledge Graph to estimate hyper-local 
-fair market values and calculates real-time markup percentages.
+Two-layer approach:
+  Layer 1: Database-backed Z-score anomaly detection (offline, fast)
+  Layer 2: Gemini LLM contextual analysis (online, nuanced)
+
+Uses a 3-tier verdict system:
+  - fair: z-score <= 1.0
+  - slightly_high: 1.0 < z-score <= 2.0
+  - overpriced: z-score > 2.0
+  - insufficient_data: sample_count < MIN_SAMPLE_SIZE
+
 Does not make binary "Scam" decisions, but rather provides nuanced Tiers.
 """
 import json
+import math
 from typing import Optional, Tuple
 from pydantic import BaseModel, Field
 import google.generativeai as genai
 from app.core.config import settings
+from app.data.price_db import get_price_stats
 
 # ─────────────────────────────────────────────────────────
 # DATA MODELS
@@ -34,9 +44,117 @@ class PriceAssessmentResult(BaseModel):
     assessment_message: str
     typology_match: str
 
+class PriceCheckResult(BaseModel):
+    """Result from the DB-backed price check (Layer 1)."""
+    item_name: str
+    asked_price: float
+    mean_price: float
+    std_dev: float
+    z_score: float
+    sample_count: int
+    tier: str  # fair, slightly_high, overpriced, insufficient_data
+    confidence: float  # 0.0 - 1.0
+    price_range: str  # e.g. "35,000 - 65,000 VND"
+    message: str
+    source: str = "database"
+    last_updated: str = ""
+
+
 # ─────────────────────────────────────────────────────────
-# CORE LOGIC
+# LAYER 1: DATABASE-BACKED PRICE CHECK (offline, fast)
 # ─────────────────────────────────────────────────────────
+
+def check_single_price(
+    item_name: str,
+    asked_price: float,
+    region: str = "hanoi",
+    venue_type: str = "all",
+) -> PriceCheckResult:
+    """
+    Check a single item price against the SQLite price database.
+    Uses Z-score anomaly detection with configurable thresholds.
+    
+    Returns insufficient_data when sample_count < MIN_SAMPLE_SIZE.
+    """
+    stats = get_price_stats(region, item_name, venue_type)
+    
+    if stats is None:
+        return PriceCheckResult(
+            item_name=item_name,
+            asked_price=asked_price,
+            mean_price=0,
+            std_dev=0,
+            z_score=0,
+            sample_count=0,
+            tier="insufficient_data",
+            confidence=0.0,
+            price_range="N/A",
+            message=f"No price data found for '{item_name}' in {region}. Cannot verify.",
+        )
+    
+    sample_count = stats["sample_count"]
+    mean_price = stats["mean_price"]
+    std_dev = stats["std_dev"]
+    min_price = stats["min_price"]
+    max_price = stats["max_price"]
+    last_updated = stats.get("last_updated", "")
+    
+    # Refuse to conclude if insufficient data
+    if sample_count < settings.MIN_SAMPLE_SIZE:
+        return PriceCheckResult(
+            item_name=item_name,
+            asked_price=asked_price,
+            mean_price=mean_price,
+            std_dev=std_dev,
+            z_score=0,
+            sample_count=sample_count,
+            tier="insufficient_data",
+            confidence=sample_count / settings.MIN_SAMPLE_SIZE,
+            price_range=f"{int(min_price):,} - {int(max_price):,} VND",
+            message=f"Only {sample_count} price samples for '{item_name}' in {region}. "
+                    f"Need at least {settings.MIN_SAMPLE_SIZE} to make a reliable verdict. "
+                    f"Current range: {int(min_price):,} - {int(max_price):,} VND.",
+            last_updated=last_updated,
+        )
+    
+    # Calculate Z-score
+    if std_dev > 0:
+        z_score = (asked_price - mean_price) / std_dev
+    else:
+        # All samples are identical — any deviation is significant
+        z_score = 0.0 if asked_price == mean_price else 3.0
+    
+    # Determine tier based on z-score thresholds from config
+    if z_score <= settings.PRICE_TIER_GREEN:
+        tier = "fair"
+        message = (f"Fair price. {int(asked_price):,} VND is within the normal range "
+                   f"for {item_name} in {region} (avg: {int(mean_price):,} VND).")
+    elif z_score <= settings.PRICE_TIER_YELLOW:
+        tier = "slightly_high"
+        message = (f"Slightly above average. {int(asked_price):,} VND is higher than "
+                   f"the mean of {int(mean_price):,} VND but may be normal for this venue type.")
+    else:
+        tier = "overpriced"
+        message = (f"Significantly overpriced. {int(asked_price):,} VND is {z_score:.1f} "
+                   f"standard deviations above the mean of {int(mean_price):,} VND. "
+                   f"Normal range: {int(min_price):,} - {int(max_price):,} VND.")
+    
+    # Confidence based on sample count (more data = higher confidence)
+    confidence = min(1.0, sample_count / 20)  # 20+ samples = 100% confidence
+    
+    return PriceCheckResult(
+        item_name=item_name,
+        asked_price=asked_price,
+        mean_price=mean_price,
+        std_dev=std_dev,
+        z_score=round(z_score, 2),
+        sample_count=sample_count,
+        tier=tier,
+        confidence=round(confidence, 2),
+        price_range=f"{int(min_price):,} - {int(max_price):,} VND",
+        message=message,
+        last_updated=last_updated,
+    )
 
 def calculate_tier_and_message(
     unit_price: float, 
