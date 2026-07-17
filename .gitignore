@@ -39,3 +39,6 @@ logs/
 # Uploads
 uploads/
 temp/
+
+# Docs
+*.pdf
