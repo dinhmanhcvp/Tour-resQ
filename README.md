@@ -147,7 +147,9 @@ tour-resq/
 |--------|----------|-------------|
 | `POST` | `/api/v1/analyze-situation` | Combined price + scam analysis from text |
 | `POST` | `/api/v1/check-price` | DB-backed price check with Z-score |
+| `POST` | `/api/v1/check-price-ocr` | Full OCR pipeline: photo -> item extraction -> DB check |
 | `POST` | `/api/v1/analyze-vision` | Vision AI for menu/receipt forgery detection |
+| `POST` | `/api/v1/contribute-price` | Submit verified fair price (anti-poisoning) |
 | `POST` | `/api/v1/translate` | Domain-adapted translation |
 | `POST` | `/api/v1/translate/confrontation` | Show-to-vendor translation |
 | `GET`  | `/api/v1/phrasebook` | Offline phrasebook |

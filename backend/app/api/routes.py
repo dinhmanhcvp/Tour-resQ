@@ -8,7 +8,8 @@ from pydantic import BaseModel
 from typing import Optional
 import hashlib
 
-from app.engine.price_checker import analyze_price_context, check_single_price
+from app.engine.price_checker import analyze_price_context, check_single_price, check_price_from_image
+from app.data.price_db import add_verified_price
 from app.engine.scam_detector import detect_scam_with_ai
 from app.engine.defense_scripts import generate_defense_script
 from app.engine.blackbox import log_incident, get_heatmap_data
@@ -262,3 +263,65 @@ async def languages():
 async def translations(lang: str = "en"):
     """Batch UI translations for the given language."""
     return {"status": "success", "language": lang, "translations": get_all_translations(lang)}
+
+
+# ─────────────────────────────────────────────────────────
+# OCR PRICE CHECK & CONTRIBUTE
+# ─────────────────────────────────────────────────────────
+
+class OCRPriceCheckRequest(BaseModel):
+    image_base64: str
+    region: str = "hanoi"
+    language: str = "en"
+
+@router.post("/api/v1/check-price-ocr")
+async def check_price_ocr(req: OCRPriceCheckRequest):
+    """
+    Full OCR pipeline: Image -> Gemini Vision OCR -> extract items -> DB lookup -> Z-score.
+    Returns per-item verdict with sample_count, z_score, mean_price, and confidence.
+    """
+    result = await check_price_from_image(
+        image_base64=req.image_base64,
+        region=req.region,
+        lang=req.language,
+    )
+    if not result:
+        return {"status": "error", "message": "OCR analysis failed. Check API key or image quality."}
+    return {"status": "success", "result": result.dict()}
+
+
+class ContributePriceRequest(BaseModel):
+    region: str
+    category: str
+    item_name: str
+    price_vnd: int
+    venue_type: str = "street"
+    item_name_vi: str = ""
+
+@router.post("/api/v1/contribute-price")
+async def contribute_price(req: ContributePriceRequest):
+    """
+    Submit a tourist-verified fair price to strengthen the database.
+    Only accepted if the price falls within the fair range (prevents poisoning).
+    """
+    # Validate: only accept prices that are within normal range
+    existing = check_single_price(req.item_name, req.price_vnd, req.region)
+    if existing.tier == "overpriced":
+        return {
+            "status": "rejected",
+            "message": "Price appears abnormally high. Only fair prices are accepted to prevent data poisoning.",
+            "existing_range": existing.price_range,
+        }
+
+    add_verified_price(
+        region=req.region,
+        category=req.category,
+        item_name=req.item_name,
+        price_vnd=req.price_vnd,
+        venue_type=req.venue_type,
+        item_name_vi=req.item_name_vi,
+    )
+    return {
+        "status": "accepted",
+        "message": f"Price for {req.item_name} ({req.price_vnd:,} VND) added to database. Thank you!",
+    }

@@ -264,3 +264,158 @@ If it's a bespoke/handicraft item, set is_bespoke_art to true.
     except Exception as e:
         print(f"Price Analysis Error: {e}")
         return None
+
+
+# ─────────────────────────────────────────────────────────
+# LAYER 3: OCR-TO-DB PIPELINE (Image → Items → Z-Score)
+# ─────────────────────────────────────────────────────────
+
+class OCRItem(BaseModel):
+    """A single item extracted from a menu/receipt image."""
+    item_name: str = Field(description="The item name in English (e.g. 'pho', 'beer', 'taxi ride')")
+    item_name_vi: str = Field(description="The item name in Vietnamese if visible (e.g. 'phở', 'bia')")
+    price_vnd: float = Field(description="The price in VND. Convert from 'k' notation (e.g. 45k = 45000).")
+    quantity: float = Field(default=1.0, description="Quantity if specified, otherwise 1.0")
+    unit: str = Field(default="item", description="Unit of measurement (e.g. 'item', '100g', 'kg', 'plate')")
+
+class OCRExtractionResult(BaseModel):
+    """Structured extraction from an image."""
+    items: list[OCRItem] = Field(description="All items with prices found in the image")
+    currency_detected: str = Field(default="VND", description="The currency detected (VND, USD, etc.)")
+    language_detected: str = Field(default="vi", description="Primary language of the menu/receipt")
+
+class OCRPriceCheckResult(BaseModel):
+    """Complete result of OCR + price verification."""
+    items_checked: list[dict]
+    total_asked: float
+    total_fair_estimate: float
+    overall_verdict: str  # fair, slightly_high, overpriced, mixed, insufficient_data
+    currency_warning: str  # Empty or warning about wrong currency
+    summary: str
+
+
+async def check_price_from_image(
+    image_base64: str,
+    region: str = "hanoi",
+    lang: str = "en",
+) -> Optional[OCRPriceCheckResult]:
+    """
+    Full pipeline: Image → Gemini Vision OCR → Extract items → DB lookup → Z-score.
+    
+    This is the endpoint the evaluation document specifically requires.
+    """
+    if not settings.gemini_key:
+        return None
+
+    genai.configure(api_key=settings.gemini_key)
+    model = genai.GenerativeModel("gemini-1.5-flash")
+
+    prompt = """You are an OCR expert analyzing a Vietnamese restaurant menu, receipt, or price board.
+
+Extract ALL items with their prices. Pay close attention to:
+1. Hidden per-unit pricing (e.g. /100g, /lạng, /kg next to a seemingly cheap price)
+2. Currency symbols - is this VND or USD or another currency?
+3. Quantity notations
+4. If prices use 'k' notation, convert to full VND (45k = 45000)
+
+Return a structured list of all items found."""
+
+    try:
+        image_part = {"mime_type": "image/jpeg", "data": image_base64}
+        response = model.generate_content(
+            [prompt, image_part],
+            generation_config=genai.GenerationConfig(
+                response_mime_type="application/json",
+                response_schema=OCRExtractionResult,
+                temperature=0.1
+            )
+        )
+
+        if not response.text:
+            return None
+
+        extraction = OCRExtractionResult(**json.loads(response.text))
+
+        # Check each item against the price database
+        items_checked = []
+        total_asked = 0
+        total_fair = 0
+        worst_tier = "fair"
+        tier_rank = {"fair": 0, "insufficient_data": 1, "slightly_high": 2, "overpriced": 3}
+
+        for ocr_item in extraction.items:
+            # Normalize item name for DB lookup
+            lookup_name = ocr_item.item_name.lower().replace(" ", "_")
+            unit_price = ocr_item.price_vnd / max(ocr_item.quantity, 1.0)
+
+            # If unit is per-weight, flag it
+            per_weight_warning = ""
+            if ocr_item.unit in ("100g", "kg", "lạng"):
+                per_weight_warning = f"Price is per {ocr_item.unit}! Actual cost depends on weight."
+
+            db_check = check_single_price(lookup_name, unit_price, region)
+
+            item_result = {
+                "item_name": ocr_item.item_name,
+                "item_name_vi": ocr_item.item_name_vi,
+                "asked_price": ocr_item.price_vnd,
+                "unit_price": unit_price,
+                "quantity": ocr_item.quantity,
+                "unit": ocr_item.unit,
+                "per_weight_warning": per_weight_warning,
+                "db_tier": db_check.tier,
+                "db_mean_price": db_check.mean_price,
+                "db_z_score": db_check.z_score,
+                "db_sample_count": db_check.sample_count,
+                "db_message": db_check.message,
+            }
+            items_checked.append(item_result)
+
+            total_asked += ocr_item.price_vnd
+            if db_check.mean_price > 0:
+                total_fair += db_check.mean_price * max(ocr_item.quantity, 1.0)
+
+            if tier_rank.get(db_check.tier, 0) > tier_rank.get(worst_tier, 0):
+                worst_tier = db_check.tier
+
+        # Currency warning
+        currency_warning = ""
+        if extraction.currency_detected != "VND":
+            currency_warning = (f"WARNING: Prices appear to be in {extraction.currency_detected}, "
+                              f"not VND! This could be a dual-currency trap.")
+
+        # Summary
+        n_items = len(items_checked)
+        n_overpriced = sum(1 for i in items_checked if i["db_tier"] == "overpriced")
+        n_insufficient = sum(1 for i in items_checked if i["db_tier"] == "insufficient_data")
+
+        if n_overpriced > 0:
+            summary = f"{n_overpriced} of {n_items} items are overpriced. Total asked: {int(total_asked):,} VND."
+        elif n_insufficient == n_items:
+            summary = f"Cannot verify any of the {n_items} items — insufficient price data in our database."
+        else:
+            summary = f"All {n_items} items appear fairly priced. Total: {int(total_asked):,} VND."
+
+        if total_fair > 0:
+            summary += f" Estimated fair total: {int(total_fair):,} VND."
+        if currency_warning:
+            summary = currency_warning + " " + summary
+
+        # Determine overall verdict
+        if n_overpriced > 0 and n_overpriced < n_items:
+            overall = "mixed"
+        else:
+            overall = worst_tier
+
+        return OCRPriceCheckResult(
+            items_checked=items_checked,
+            total_asked=total_asked,
+            total_fair_estimate=total_fair,
+            overall_verdict=overall,
+            currency_warning=currency_warning,
+            summary=summary,
+        )
+
+    except Exception as e:
+        print(f"OCR Price Check Error: {e}")
+        return None
