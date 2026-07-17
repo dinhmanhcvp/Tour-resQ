@@ -48,8 +48,8 @@ class PriceCheckResult(BaseModel):
     """Result from the DB-backed price check (Layer 1)."""
     item_name: str
     asked_price: float
-    mean_price: float
-    std_dev: float
+    median_price: float
+    mad: float
     z_score: float
     sample_count: int
     tier: str  # fair, slightly_high, overpriced, insufficient_data
@@ -82,8 +82,8 @@ def check_single_price(
         return PriceCheckResult(
             item_name=item_name,
             asked_price=asked_price,
-            mean_price=0,
-            std_dev=0,
+            median_price=0,
+            mad=0,
             z_score=0,
             sample_count=0,
             tier="insufficient_data",
@@ -93,8 +93,8 @@ def check_single_price(
         )
     
     sample_count = stats["sample_count"]
-    mean_price = stats["mean_price"]
-    std_dev = stats["std_dev"]
+    median_price = stats["median_price"]
+    mad = stats["mad"]
     min_price = stats["min_price"]
     max_price = stats["max_price"]
     last_updated = stats.get("last_updated", "")
@@ -104,8 +104,8 @@ def check_single_price(
         return PriceCheckResult(
             item_name=item_name,
             asked_price=asked_price,
-            mean_price=mean_price,
-            std_dev=std_dev,
+            median_price=median_price,
+            mad=mad,
             z_score=0,
             sample_count=sample_count,
             tier="insufficient_data",
@@ -117,26 +117,29 @@ def check_single_price(
             last_updated=last_updated,
         )
     
-    # Calculate Z-score
-    if std_dev > 0:
-        z_score = (asked_price - mean_price) / std_dev
+    # Calculate robust Z-score based on MAD
+    # Z = (X - Median) / (1.4826 * MAD)
+    # Using 1.4826 converts MAD to an estimator of standard deviation for a normal distribution
+    robust_std_dev = 1.4826 * mad
+    if robust_std_dev > 0:
+        z_score = (asked_price - median_price) / robust_std_dev
     else:
-        # All samples are identical — any deviation is significant
-        z_score = 0.0 if asked_price == mean_price else 3.0
+        # All samples are identical or too concentrated — any deviation is significant
+        z_score = 0.0 if asked_price == median_price else 3.0
     
     # Determine tier based on z-score thresholds from config
     if z_score <= settings.PRICE_TIER_GREEN:
         tier = "fair"
         message = (f"Fair price. {int(asked_price):,} VND is within the normal range "
-                   f"for {item_name} in {region} (avg: {int(mean_price):,} VND).")
+                   f"for {item_name} in {region} (median: {int(median_price):,} VND).")
     elif z_score <= settings.PRICE_TIER_YELLOW:
         tier = "slightly_high"
         message = (f"Slightly above average. {int(asked_price):,} VND is higher than "
-                   f"the mean of {int(mean_price):,} VND but may be normal for this venue type.")
+                   f"the typical {int(median_price):,} VND but may be normal for this venue type.")
     else:
         tier = "overpriced"
-        message = (f"Significantly overpriced. {int(asked_price):,} VND is {z_score:.1f} "
-                   f"standard deviations above the mean of {int(mean_price):,} VND. "
+        message = (f"Significantly overpriced. {int(asked_price):,} VND is abnormally high "
+                   f"compared to the typical {int(median_price):,} VND. "
                    f"Normal range: {int(min_price):,} - {int(max_price):,} VND.")
     
     # Confidence based on sample count (more data = higher confidence)
@@ -145,8 +148,8 @@ def check_single_price(
     return PriceCheckResult(
         item_name=item_name,
         asked_price=asked_price,
-        mean_price=mean_price,
-        std_dev=std_dev,
+        median_price=median_price,
+        mad=mad,
         z_score=round(z_score, 2),
         sample_count=sample_count,
         tier=tier,
@@ -364,7 +367,7 @@ Return a structured list of all items found."""
                 "unit": ocr_item.unit,
                 "per_weight_warning": per_weight_warning,
                 "db_tier": db_check.tier,
-                "db_mean_price": db_check.mean_price,
+                "db_median_price": db_check.median_price,
                 "db_z_score": db_check.z_score,
                 "db_sample_count": db_check.sample_count,
                 "db_message": db_check.message,
@@ -372,8 +375,8 @@ Return a structured list of all items found."""
             items_checked.append(item_result)
 
             total_asked += ocr_item.price_vnd
-            if db_check.mean_price > 0:
-                total_fair += db_check.mean_price * max(ocr_item.quantity, 1.0)
+            if db_check.median_price > 0:
+                total_fair += db_check.median_price * max(ocr_item.quantity, 1.0)
 
             if tier_rank.get(db_check.tier, 0) > tier_rank.get(worst_tier, 0):
                 worst_tier = db_check.tier

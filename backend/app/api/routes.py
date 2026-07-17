@@ -3,7 +3,9 @@ Tour-resQ API Routes
 ====================
 All REST endpoints, synchronized with README documentation.
 """
-from fastapi import APIRouter, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Request
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from pydantic import BaseModel
 from typing import Optional
 import hashlib
@@ -20,6 +22,7 @@ from app.engine.sos_dispatcher import dispatch_sos, get_emergency_info
 from app.i18n.translations import t, get_supported_languages, get_all_translations
 
 router = APIRouter()
+limiter = Limiter(key_func=get_remote_address)
 
 
 # ─────────────────────────────────────────────────────────
@@ -199,7 +202,8 @@ async def phrasebook(lang: str = "en"):
 # ─────────────────────────────────────────────────────────
 
 @router.post("/api/v1/sos")
-async def sos(req: SOSRequest):
+@limiter.limit("3/minute")
+async def handle_sos(req: SOSRequest, request: Request, bg_tasks: BackgroundTasks):
     """Emergency SOS dispatch with GPS, context, and auto-translation."""
     report = await dispatch_sos(
         latitude=req.latitude,
@@ -275,7 +279,8 @@ class OCRPriceCheckRequest(BaseModel):
     language: str = "en"
 
 @router.post("/api/v1/check-price-ocr")
-async def check_price_ocr(req: OCRPriceCheckRequest):
+@limiter.limit("5/minute")
+async def check_price_ocr(req: OCRPriceCheckRequest, request: Request):
     """
     Full OCR pipeline: Image -> Gemini Vision OCR -> extract items -> DB lookup -> Z-score.
     Returns per-item verdict with sample_count, z_score, mean_price, and confidence.

@@ -30,59 +30,96 @@ function handlePricePhoto(event) {
     if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
 
     const reader = new FileReader();
-    reader.onload = async function(e) {
-        const base64Image = e.target.result.split(',')[1];
-        const scanTitle = document.getElementById('scan-alert-title');
-        const scanPrice = document.getElementById('scan-alert-price');
-        const scanMsg = document.getElementById('scan-alert-msg');
-        const overlay = document.getElementById('price-results-overlay');
-        const visionWarningBox = document.getElementById('vision-forgery-warning');
-        const visionReasonMsg = document.getElementById('vision-reason');
+    reader.onload = function(e) {
+        const img = new Image();
+        img.onload = async function() {
+            // Compress and strip EXIF via Canvas
+            const canvas = document.createElement('canvas');
+            const MAX_WIDTH = 1024;
+            const MAX_HEIGHT = 1024;
+            let width = img.width;
+            let height = img.height;
 
-        // Loading state
-        scanTitle.innerText = "ANALYZING...";
-        scanPrice.innerText = "...";
-        scanMsg.innerText = "AI is scanning the image for price anomalies...";
-        scanTitle.parentElement.className = "results-card high-contrast tier-caution";
-        if (visionWarningBox) visionWarningBox.style.display = 'none';
-        overlay.style.display = 'flex';
-
-        try {
-            const res = await fetch(API_BASE + '/api/v1/analyze-vision', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ image_base64: base64Image, language: currentLang })
-            });
-            const data = await res.json();
-
-            if (data.status === 'success' && data.vision_assessment) {
-                const a = data.vision_assessment;
-                if (a.forgery_detected) {
-                    scanTitle.innerText = "FORGERY DETECTED";
-                    scanTitle.parentElement.className = "results-card high-contrast tier-danger";
-                    scanPrice.innerText = a.risk_level;
-                    scanMsg.innerText = a.analysis_reason;
-                    if (visionWarningBox && visionReasonMsg) {
-                        visionWarningBox.style.display = 'block';
-                        visionReasonMsg.innerText = "Items: " + (a.detected_items || []).join(", ");
-                    }
-                    if (navigator.vibrate) navigator.vibrate([300, 200, 300]);
-                } else {
-                    scanTitle.innerText = "SAFE";
-                    scanTitle.parentElement.className = "results-card high-contrast tier-fair";
-                    scanPrice.innerText = "OK";
-                    scanMsg.innerText = "No forgery or price manipulation detected.";
+            if (width > height) {
+                if (width > MAX_WIDTH) {
+                    height *= MAX_WIDTH / width;
+                    width = MAX_WIDTH;
                 }
             } else {
-                scanTitle.innerText = "ERROR";
-                scanMsg.innerText = data.message || "Vision API unavailable. Check your Gemini API key.";
+                if (height > MAX_HEIGHT) {
+                    width *= MAX_HEIGHT / height;
+                    height = MAX_HEIGHT;
+                }
             }
-        } catch (err) {
-            console.error(err);
-            scanTitle.innerText = "NETWORK ERROR";
-            scanMsg.innerText = "Could not reach the backend server.";
-        }
-        event.target.value = '';
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            const base64Image = canvas.toDataURL('image/jpeg', 0.6).split(',')[1];
+            
+            const scanTitle = document.getElementById('scan-alert-title');
+            const scanPrice = document.getElementById('scan-alert-price');
+            const scanMsg = document.getElementById('scan-alert-msg');
+            const overlay = document.getElementById('price-results-overlay');
+            const visionWarningBox = document.getElementById('vision-forgery-warning');
+            const visionReasonMsg = document.getElementById('vision-reason');
+
+            // Loading state
+            scanTitle.innerText = "ANALYZING...";
+            scanPrice.innerText = "...";
+            scanMsg.innerText = "AI is extracting items and checking database...";
+            scanTitle.parentElement.className = "results-card high-contrast tier-caution";
+            if (visionWarningBox) visionWarningBox.style.display = 'none';
+            overlay.style.display = 'flex';
+
+            try {
+                const res = await fetch(API_BASE + '/api/v1/check-price-ocr', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image_base64: base64Image, language: currentLang })
+                });
+                
+                if (res.status === 429) {
+                    scanTitle.innerText = "RATE LIMITED";
+                    scanMsg.innerText = "Too many requests. Please wait a minute.";
+                    return;
+                }
+                
+                const data = await res.json();
+
+                if (data.status === 'success' && data.result) {
+                    const r = data.result;
+                    if (r.overall_verdict === 'EXTREME_OVERCHARGE') {
+                        scanTitle.innerText = "OVERPRICED";
+                        scanTitle.parentElement.className = "results-card high-contrast tier-danger";
+                    } else if (r.overall_verdict === 'SLIGHTLY_HIGH') {
+                        scanTitle.innerText = "SLIGHTLY HIGH";
+                        scanTitle.parentElement.className = "results-card high-contrast tier-caution";
+                    } else {
+                        scanTitle.innerText = "FAIR PRICE";
+                        scanTitle.parentElement.className = "results-card high-contrast tier-fair";
+                    }
+                    
+                    scanPrice.innerText = r.total_asked.toLocaleString() + " VND";
+                    scanMsg.innerText = r.summary;
+                    
+                    if (r.currency_warning && visionWarningBox && visionReasonMsg) {
+                        visionWarningBox.style.display = 'block';
+                        visionReasonMsg.innerText = r.currency_warning;
+                    }
+                } else {
+                    scanTitle.innerText = "ERROR";
+                    scanMsg.innerText = data.message || "Failed to analyze image.";
+                }
+            } catch (err) {
+                console.error(err);
+                scanTitle.innerText = "NETWORK ERROR";
+                scanMsg.innerText = "Could not reach the backend server.";
+            }
+            event.target.value = '';
+        };
+        img.src = e.target.result;
     };
     reader.readAsDataURL(file);
 }
@@ -396,6 +433,13 @@ function initSlideToSOS() {
     window.addEventListener('mouseup', endDrag);
 
     async function triggerSOS() {
+        // GPS Consent
+        const consent = confirm("DANGER: You are about to trigger an SOS. Do you consent to sharing your GPS location with local authorities?");
+        if (!consent) {
+            endDrag();
+            return;
+        }
+
         triggered = true;
         knob.style.transform = `translateX(${maxDragX}px)`;
         knob.style.backgroundColor = '#00FF66';
@@ -428,6 +472,12 @@ function initSlideToSOS() {
                     severity: "critical"
                 })
             });
+            
+            if (res.status === 429) {
+                statusEl.innerHTML = "RATE LIMITED. DO NOT SPAM. CALL 113.";
+                return;
+            }
+            
             const data = await res.json();
             statusEl.innerHTML = `SOS SENT (${data.report_id || 'OK'}). Location shared. Call 113 NOW.`;
         } catch(e) {

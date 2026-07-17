@@ -67,6 +67,8 @@ def init_price_db():
             sample_count INTEGER DEFAULT 0,
             mean_price REAL DEFAULT 0,
             std_dev REAL DEFAULT 0,
+            median_price REAL DEFAULT 0,
+            mad REAL DEFAULT 0,
             min_price INTEGER DEFAULT 0,
             max_price INTEGER DEFAULT 0,
             p25_price INTEGER DEFAULT 0,
@@ -211,11 +213,10 @@ def rebuild_price_stats(conn: Optional[sqlite3.Connection] = None):
 
     cursor.execute("""
         INSERT INTO price_stats (region, category, item_name, venue_type,
-                                  sample_count, mean_price, min_price, max_price)
+                                  sample_count, min_price, max_price)
         SELECT
             region, category, item_name, venue_type,
             COUNT(*) as sample_count,
-            AVG(price_vnd) as mean_price,
             MIN(price_vnd) as min_price,
             MAX(price_vnd) as max_price
         FROM price_references
@@ -227,11 +228,10 @@ def rebuild_price_stats(conn: Optional[sqlite3.Connection] = None):
     cursor.execute("""
         INSERT OR REPLACE INTO price_stats
             (region, category, item_name, venue_type,
-             sample_count, mean_price, min_price, max_price)
+             sample_count, min_price, max_price)
         SELECT
             region, category, item_name, 'all',
             COUNT(*) as sample_count,
-            AVG(price_vnd) as mean_price,
             MIN(price_vnd) as min_price,
             MAX(price_vnd) as max_price
         FROM price_references
@@ -239,9 +239,9 @@ def rebuild_price_stats(conn: Optional[sqlite3.Connection] = None):
         GROUP BY region, category, item_name
     """)
 
-    # Compute standard deviation (SQLite doesn't have STDEV built-in)
+    # Compute Median, MAD, and Standard Deviation
     rows = cursor.execute("""
-        SELECT id, region, category, item_name, venue_type, mean_price
+        SELECT id, region, category, item_name, venue_type
         FROM price_stats
     """).fetchall()
 
@@ -254,21 +254,37 @@ def rebuild_price_stats(conn: Optional[sqlite3.Connection] = None):
         """, (row["region"], row["category"], row["item_name"],
               row["venue_type"], row["venue_type"])).fetchall()
 
-        if len(prices) >= 2:
-            mean = row["mean_price"]
-            variance = sum((p["price_vnd"] - mean) ** 2 for p in prices) / len(prices)
-            std_dev = math.sqrt(variance)
-
+        if len(prices) >= 1:
             sorted_prices = sorted(p["price_vnd"] for p in prices)
             n = len(sorted_prices)
+            
+            # Median
+            if n % 2 == 1:
+                median = sorted_prices[n // 2]
+            else:
+                median = (sorted_prices[n // 2 - 1] + sorted_prices[n // 2]) / 2.0
+                
+            # Mean and Std Dev
+            mean = sum(sorted_prices) / n
+            variance = sum((p - mean) ** 2 for p in sorted_prices) / n
+            std_dev = math.sqrt(variance)
+            
+            # MAD (Median Absolute Deviation)
+            abs_devs = sorted(abs(p - median) for p in sorted_prices)
+            if n % 2 == 1:
+                mad = abs_devs[n // 2]
+            else:
+                mad = (abs_devs[n // 2 - 1] + abs_devs[n // 2]) / 2.0
+
             p25 = sorted_prices[max(0, n // 4)]
             p75 = sorted_prices[min(n - 1, 3 * n // 4)]
 
             cursor.execute("""
                 UPDATE price_stats
-                SET std_dev = ?, p25_price = ?, p75_price = ?, last_updated = ?
+                SET mean_price = ?, std_dev = ?, median_price = ?, mad = ?, 
+                    p25_price = ?, p75_price = ?, last_updated = ?
                 WHERE id = ?
-            """, (std_dev, p25, p75, datetime.now(timezone.utc).isoformat(), row["id"]))
+            """, (mean, std_dev, median, mad, p25, p75, datetime.now(timezone.utc).isoformat(), row["id"]))
 
     conn.commit()
     if close_conn:

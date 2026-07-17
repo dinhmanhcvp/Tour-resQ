@@ -15,11 +15,11 @@ print("\n=== Test 2: Price Checker (DB Layer) ===")
 from app.engine.price_checker import check_single_price
 
 v = check_single_price("pho", 120000, "hanoi")
-print(f"Pho 120k VND in Hanoi: tier={v.tier}, z_score={v.z_score}, mean={v.mean_price}, samples={v.sample_count}")
+print(f"Pho 120k VND in Hanoi: tier={v.tier}, z_score={v.z_score}, median={v.median_price}, samples={v.sample_count}")
 assert v.tier in ("overpriced", "slightly_high"), f"Expected overpriced/slightly_high, got {v.tier}"
 
 v2 = check_single_price("pho", 40000, "hanoi")
-print(f"Pho 40k VND in Hanoi: tier={v2.tier}, z_score={v2.z_score}, mean={v2.mean_price}")
+print(f"Pho 40k VND in Hanoi: tier={v2.tier}, z_score={v2.z_score}, median={v2.median_price}")
 assert v2.tier == "fair", f"Expected fair, got {v2.tier}"
 
 # Test 2b: insufficient_data case
