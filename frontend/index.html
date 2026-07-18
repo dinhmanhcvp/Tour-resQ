@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
     <script src="https://unpkg.com/feather-icons"></script>
-    <link rel="stylesheet" href="styles.css?v=6">
+    <link rel="stylesheet" href="styles.css?v=8">
 </head>
 <body class="dark-theme">
     <div id="global-map-bg" class="global-map-bg"></div>
@@ -125,9 +125,11 @@
             <!-- Demo Bills Panel -->
             <div class="sample-images-bar glass-panel" style="position: absolute; top: 120px; left: 1.5rem; right: 1.5rem; padding: 1rem; border-radius: 16px; z-index: 10; text-align: center;">
                 <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.5rem; font-family: var(--font-display);">TRY DEMO BILLS</p>
-                <div style="display: flex; gap: 10px; justify-content: center;">
-                    <img src="samples/receipt_printed.png" onclick="analyzeSample('samples/receipt_printed.png')" style="width: 60px; height: 80px; object-fit: cover; border-radius: 8px; cursor: pointer; border: 2px solid transparent;" onmouseover="this.style.borderColor='var(--neon-green)'" onmouseout="this.style.borderColor='transparent'">
-                    <img src="samples/receipt_handwritten.png" onclick="analyzeSample('samples/receipt_handwritten.png')" style="width: 60px; height: 80px; object-fit: cover; border-radius: 8px; cursor: pointer; border: 2px solid transparent;" onmouseover="this.style.borderColor='var(--neon-green)'" onmouseout="this.style.borderColor='transparent'">
+                <div style="display: flex; gap: 10px; justify-content: center; overflow-x: auto; padding-bottom: 5px;">
+                    <img src="samples/receipt_printed.png" onclick="analyzeSample('samples/receipt_printed.png')" style="width: 60px; height: 80px; object-fit: cover; border-radius: 8px; cursor: pointer; border: 2px solid transparent;" onmouseover="this.style.borderColor='var(--neon-green)'" onmouseout="this.style.borderColor='transparent'" title="Normal Bill">
+                    <img src="samples/receipt_handwritten.png" onclick="analyzeSample('samples/receipt_handwritten.png')" style="width: 60px; height: 80px; object-fit: cover; border-radius: 8px; cursor: pointer; border: 2px solid transparent;" onmouseover="this.style.borderColor='var(--neon-green)'" onmouseout="this.style.borderColor='transparent'" title="Handwritten Bill">
+                    <img src="samples/scam_nhatrang_eggs.jpg" onclick="analyzeSample('samples/scam_nhatrang_eggs.jpg')" style="width: 60px; height: 80px; object-fit: cover; border-radius: 8px; cursor: pointer; border: 2px solid transparent;" onmouseover="this.style.borderColor='var(--danger-red)'" onmouseout="this.style.borderColor='transparent'" title="Real Scam: 500k Eggs">
+                    <img src="samples/scam_seafood.png" onclick="analyzeSample('samples/scam_seafood.png')" style="width: 60px; height: 80px; object-fit: cover; border-radius: 8px; cursor: pointer; border: 2px solid transparent;" onmouseover="this.style.borderColor='var(--danger-red)'" onmouseout="this.style.borderColor='transparent'" title="Scam: 10M Seafood">
                 </div>
             </div>
             
@@ -266,6 +268,6 @@
         </nav>
     </main>
     <script>feather.replace();</script>
-    <script src="app.js?v=6"></script>
+    <script src="app.js?v=8"></script>
 </body>
 </html>
