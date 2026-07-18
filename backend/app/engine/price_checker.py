@@ -351,7 +351,8 @@ Extract ALL purchased items with their prices. Your analysis must handle the fol
 2. FOREIGN LANGUAGES: If the menu/receipt is written in Chinese, Korean, English, or Russian, translate the item names to English for the 'item_name' field, but KEEP the original text in the 'item_name_vi' field (e.g. if it says 炒飯, put 'Fried Rice' as item_name and '炒飯' as item_name_vi).
 3. HIDDEN METRICS (The /100g trap): Look closely for tiny text like '/100g', '/lạng', '/kg' next to a seemingly cheap price.
 4. PRICE FORMATTING (CRITICAL): In Vietnam, '30' or '30k' on a menu almost always means 30,000 VND. Also, Vietnamese uses a dot '.' as a thousands separator (e.g. 30.000 = 30,000). If a food/drink price is less than 1000 (e.g. '45'), you MUST multiply it by 1000 to get the full VND amount (45000) for the 'price_vnd' field.
-5. IGNORE TOTALS: DO NOT extract 'Total', 'Tổng cộng', 'Subtotal', 'Tax', or 'Thanh toán' rows as separate items. ONLY extract the actual goods/services.
+5. QUANTITY MULTIPLIERS: For 'price_vnd', ALWAYS extract the TOTAL price for that line item on the receipt (e.g. if it says '3 x 50,000 = 150,000', price_vnd MUST be 150000, and quantity MUST be 3).
+6. IGNORE TOTALS: DO NOT extract 'Total', 'Tổng cộng', 'Subtotal', 'Tax', or 'Thanh toán' rows as separate items. ONLY extract the actual goods/services.
 
 Even if the receipt is extremely simple, blurry, or missing context, you MUST extract whatever items and prices you can see.
 Return a structured JSON list of all items found."""

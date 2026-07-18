@@ -327,10 +327,14 @@ async function processBase64ImageAndAnalyze(base64Image) {
             let bHtml = `<strong>${t('scan.item_breakdown', 'Item Breakdown:')}</strong><br/>`;
             r.items_checked.forEach(item => {
                 const tier = item.db_tier || 'unknown';
+                let priceText = formatCurrency(item.asked_price || item.unit_price);
+                if (item.quantity > 1) {
+                    priceText = `${item.quantity}x = ${priceText}`;
+                }
                 bHtml += `<div style="display:flex; justify-content:space-between; margin-bottom:4px; padding-bottom:4px; border-bottom:1px solid rgba(255,255,255,0.1)">
                     <span>${item.item_name}</span>
                     <div style="text-align:right">
-                        <strong>${formatCurrency(item.unit_price)} <em style="font-size:0.8rem;opacity:0.8;color:inherit;">(${tier.toUpperCase()})</em></strong>
+                        <strong>${priceText} <em style="font-size:0.8rem;opacity:0.8;color:inherit;">(${tier.toUpperCase()})</em></strong>
                     </div>
                 </div>`;
             });
