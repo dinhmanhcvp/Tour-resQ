@@ -28,6 +28,10 @@
       "dest": "frontend/hero.png"
     },
     {
+      "src": "/logo.png",
+      "dest": "frontend/logo.png"
+    },
+    {
       "src": "/(.*)",
       "dest": "frontend/index.html"
     }
