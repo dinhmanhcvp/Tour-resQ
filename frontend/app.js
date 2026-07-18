@@ -90,11 +90,14 @@ function handlePricePhoto(event) {
 
                 if (data.status === 'success' && data.result) {
                     const r = data.result;
-                    if (r.overall_verdict === 'EXTREME_OVERCHARGE') {
+                    if (r.overall_verdict === 'overpriced') {
                         scanTitle.innerText = "OVERPRICED";
                         scanTitle.parentElement.className = "results-card high-contrast tier-danger";
-                    } else if (r.overall_verdict === 'SLIGHTLY_HIGH') {
+                    } else if (r.overall_verdict === 'slightly_high') {
                         scanTitle.innerText = "SLIGHTLY HIGH";
+                        scanTitle.parentElement.className = "results-card high-contrast tier-caution";
+                    } else if (r.overall_verdict === 'mixed') {
+                        scanTitle.innerText = "MIXED PRICES";
                         scanTitle.parentElement.className = "results-card high-contrast tier-caution";
                     } else {
                         scanTitle.innerText = "FAIR PRICE";
