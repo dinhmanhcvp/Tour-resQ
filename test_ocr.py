@@ -1,5 +1,9 @@
 import os, sys, base64, asyncio, json
-sys.path.insert(0, os.path.abspath('backend'))
+from dotenv import load_dotenv
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'backend'))
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'backend', '.env'))
+from app.config import settings
+print("API KEY:", settings.gemini_key[:5] if settings.gemini_key else None)
 from app.engine.price_checker import check_price_from_image
 
 async def test_all():
@@ -17,6 +21,7 @@ async def test_all():
             else:
                 print('FAILED TO PARSE')
         except Exception as e:
-            print('ERROR:', e)
+            import traceback
+            traceback.print_exc()
 
 asyncio.run(test_all())

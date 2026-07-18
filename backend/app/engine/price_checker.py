@@ -361,29 +361,29 @@ Return a structured JSON list of all items found."""
         image_data = base64.b64decode(image_base64)
         image_part = types.Part.from_bytes(data=image_data, mime_type="image/jpeg")
         
-        # Build schema manually to avoid Pydantic $defs/$ref which google-generativeai rejects
-        ocr_schema = types.Schema(
-            type="OBJECT",
-            properties={
-                "items": types.Schema(
-                    type="ARRAY",
-                    items=types.Schema(
-                        type="OBJECT",
-                        properties={
-                            "item_name": types.Schema(type="STRING"),
-                            "item_name_vi": types.Schema(type="STRING"),
-                            "price_vnd": types.Schema(type="NUMBER"),
-                            "quantity": types.Schema(type="NUMBER"),
-                            "unit": types.Schema(type="STRING"),
+        # Build schema manually as a plain dictionary to avoid google-genai Pydantic bugs
+        ocr_schema = {
+            "type": "OBJECT",
+            "properties": {
+                "items": {
+                    "type": "ARRAY",
+                    "items": {
+                        "type": "OBJECT",
+                        "properties": {
+                            "item_name": {"type": "STRING"},
+                            "item_name_vi": {"type": "STRING"},
+                            "price_vnd": {"type": "NUMBER"},
+                            "quantity": {"type": "NUMBER"},
+                            "unit": {"type": "STRING"},
                         },
-                        required=["item_name", "price_vnd"]
-                    )
-                ),
-                "currency_detected": types.Schema(type="STRING"),
-                "language_detected": types.Schema(type="STRING")
+                        "required": ["item_name", "price_vnd"]
+                    }
+                },
+                "currency_detected": {"type": "STRING"},
+                "language_detected": {"type": "STRING"}
             },
-            required=["items"]
-        )
+            "required": ["items"]
+        }
 
         response = client.models.generate_content(
             model='gemini-2.5-flash',
@@ -396,6 +396,7 @@ Return a structured JSON list of all items found."""
         )
 
         if not response.text:
+            print("Response text is empty. Response object:", response)
             return None
 
         # Parse json safely handling missing optional fields
@@ -505,6 +506,8 @@ Return a structured JSON list of all items found."""
         )
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         print(f"OCR Price Check Error: {e}")
         return OCRPriceCheckResult(
             items_checked=[],
