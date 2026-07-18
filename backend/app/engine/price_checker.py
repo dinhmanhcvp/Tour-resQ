@@ -355,8 +355,10 @@ Extract ALL items with their prices. Pay close attention to:
 
 Return a structured list of all items found."""
 
+    import base64
     try:
-        image_part = types.Part.from_bytes(data=image_base64, mime_type="image/jpeg")
+        image_data = base64.b64decode(image_base64)
+        image_part = types.Part.from_bytes(data=image_data, mime_type="image/jpeg")
         response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=[prompt, image_part],

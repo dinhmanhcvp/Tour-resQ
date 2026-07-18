@@ -44,7 +44,9 @@ Specifically look for:
 Return a structured JSON assessment."""
 
         # Create the image dict format expected by the model
-        image_part = types.Part.from_bytes(data=image_base64, mime_type=mime_type)
+        import base64
+        image_data = base64.b64decode(image_base64)
+        image_part = types.Part.from_bytes(data=image_data, mime_type=mime_type)
         
         response = client.models.generate_content(
             model='gemini-2.5-flash',
