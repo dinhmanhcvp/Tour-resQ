@@ -12,7 +12,69 @@ document.addEventListener('DOMContentLoaded', () => {
     initSlideToSOS();
     updateLanguageUI(currentLang);
     loadTranslations(currentLang);
+    initGlobalMap();
+    initRippleEffect();
 });
+
+// ── 0.1 GLOBAL MAP (LEAFLET) ──────────────────────────────────
+let globalMap = null;
+function initGlobalMap() {
+    if (typeof L === 'undefined') return;
+    const mapEl = document.getElementById('global-map-bg');
+    if (!mapEl) return;
+
+    globalMap = L.map('global-map-bg', {
+        zoomControl: false,
+        attributionControl: false,
+        dragging: false,
+        touchZoom: false,
+        doubleClickZoom: false,
+        scrollWheelZoom: false,
+        boxZoom: false,
+        keyboard: false
+    }).setView([21.0285, 105.8542], 14);
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        subdomains: 'abcd',
+        maxZoom: 20
+    }).addTo(globalMap);
+    
+    // Mock Scam Hotspots
+    L.circle([21.0305, 105.8530], { color: 'red', fillColor: '#f03', fillOpacity: 0.3, radius: 200, weight: 1 }).addTo(globalMap);
+    L.circle([21.0250, 105.8500], { color: 'red', fillColor: '#f03', fillOpacity: 0.3, radius: 150, weight: 1 }).addTo(globalMap);
+    
+    // User location (Blue dot)
+    L.circleMarker([21.0285, 105.8542], { color: '#3B82F6', fillColor: '#3B82F6', fillOpacity: 1, radius: 6, weight: 2 }).addTo(globalMap);
+}
+
+// ── 0.2 RIPPLE EFFECT ─────────────────────────────────────────
+function initRippleEffect() {
+    document.addEventListener('click', function (e) {
+        const target = e.target.closest('button, .lang-btn, .giant-contact-btn');
+        if (!target) return;
+        
+        const circle = document.createElement('span');
+        const diameter = Math.max(target.clientWidth, target.clientHeight);
+        const radius = diameter / 2;
+
+        const rect = target.getBoundingClientRect();
+        circle.style.width = circle.style.height = `${diameter}px`;
+        circle.style.left = `${e.clientX - rect.left - radius}px`;
+        circle.style.top = `${e.clientY - rect.top - radius}px`;
+        circle.classList.add('ripple-circle');
+
+        const existingRipple = target.querySelector('.ripple-circle');
+        if (existingRipple) {
+            existingRipple.remove();
+        }
+
+        target.appendChild(circle);
+        target.classList.add('btn-ripple');
+        
+        // Remove ripple after animation
+        setTimeout(() => { circle.remove(); }, 600);
+    });
+}
 
 // ── 0. LANGUAGE ENGINE & SPLASH SCREEN ─────────────────────────────
 let translations = {};

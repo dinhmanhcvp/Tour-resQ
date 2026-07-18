@@ -45,9 +45,10 @@ body.dark-theme {
 }
 
 /* ── 2. APP CONTAINER & TAB SYSTEM ────────────────── */
-.app-container { width: 100%; height: 100dvh; display: flex; flex-direction: column; position: relative; }
-.tab-content { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: none; opacity: 0; transition: opacity 0.4s ease; overflow-y: auto; overflow-x: hidden; padding-bottom: calc(var(--nav-height) + 20px); }
-.tab-content.active { display: block; opacity: 1; }
+.global-map-bg { position: fixed; inset: 0; z-index: -1; opacity: 0.4; pointer-events: none; }
+.app-container { width: 100%; height: 100dvh; display: flex; flex-direction: column; position: relative; background: transparent; }
+.tab-content { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: none; opacity: 0; transform: translateY(20px); transition: opacity 0.4s ease, transform 0.4s var(--spring); overflow-y: auto; overflow-x: hidden; padding-bottom: calc(var(--nav-height) + 20px); }
+.tab-content.active { display: block; opacity: 1; transform: translateY(0); }
 
 /* ── 2.1 HOMEPAGE (SPLASH) ────────────────────────── */
 #tab-home {
@@ -172,8 +173,7 @@ body.dark-theme {
 .btn-secondary-giant:active { background: rgba(255,255,255,0.12); transform: scale(0.98); }
 
 /* ── 6. SOS TAB (Premium Red) ────── */
-.sos-theme { background: #0A0404; }
-.map-bg { position: absolute; inset: 0; background: url('data:image/svg+xml;utf8,<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" fill="%230A0404"/><path d="M10 10 h 80 v 80 h -80 Z" fill="none" stroke="%23220A0A" stroke-width="1"/><path d="M30 10 v 80 M50 10 v 80 M70 10 v 80 M10 30 h 80 M10 50 h 80 M10 70 h 80" stroke="%23220A0A" stroke-width="0.5"/></svg>'); background-size: 100px 100px; opacity: 0.8; z-index: 0; }
+.sos-theme { background: transparent; }
 .sos-layout { position: relative; z-index: 10; display: flex; flex-direction: column; height: 100%; padding: 2rem; }
 
 .sos-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem; }
@@ -247,3 +247,17 @@ body.dark-theme {
 @keyframes heatPulse { 0% { transform: translate(-50%, -50%) scale(0.9); opacity: 0.6; } 100% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; } }
 
 .heatmap-warning { background: rgba(15,18,25,0.8); border: 1px solid rgba(239,68,68,0.3); color: white; text-align: center; padding: 1rem; margin: 0 2rem 1.5rem; border-radius: 16px; position: relative; z-index: 2; font-size: 0.9rem; font-weight: 500; backdrop-filter: blur(10px); }
+
+/* ── 10. APPLE POLISH (Ripple) ─────────────────── */
+.btn-ripple { position: relative; overflow: hidden; }
+.ripple-circle {
+    position: absolute;
+    border-radius: 50%;
+    transform: scale(0);
+    animation: rippleAnim 0.6s linear;
+    background-color: rgba(255, 255, 255, 0.4);
+    pointer-events: none;
+}
+@keyframes rippleAnim {
+    to { transform: scale(4); opacity: 0; }
+}
