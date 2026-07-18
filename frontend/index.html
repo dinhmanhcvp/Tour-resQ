@@ -121,6 +121,15 @@
                 </button>
                 <button class="btn-icon-circular" onclick="stopCameraAndGoHome()"><i data-feather="x"></i></button>
             </div>
+
+            <!-- Demo Bills Panel -->
+            <div class="sample-images-bar glass-panel" style="position: absolute; top: 120px; left: 1.5rem; right: 1.5rem; padding: 1rem; border-radius: 16px; z-index: 10; text-align: center;">
+                <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.5rem; font-family: var(--font-display);">TRY DEMO BILLS</p>
+                <div style="display: flex; gap: 10px; justify-content: center;">
+                    <img src="samples/receipt_printed.png" onclick="analyzeSample('samples/receipt_printed.png')" style="width: 60px; height: 80px; object-fit: cover; border-radius: 8px; cursor: pointer; border: 2px solid transparent;" onmouseover="this.style.borderColor='var(--neon-green)'" onmouseout="this.style.borderColor='transparent'">
+                    <img src="samples/receipt_handwritten.png" onclick="analyzeSample('samples/receipt_handwritten.png')" style="width: 60px; height: 80px; object-fit: cover; border-radius: 8px; cursor: pointer; border: 2px solid transparent;" onmouseover="this.style.borderColor='var(--neon-green)'" onmouseout="this.style.borderColor='transparent'">
+                </div>
+            </div>
             
             <!-- Bottom Sheet Results -->
             <div id="price-results-overlay" class="results-overlay" style="display:none">

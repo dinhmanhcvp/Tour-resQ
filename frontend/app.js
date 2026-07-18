@@ -221,21 +221,13 @@ window.stopCameraAndGoHome = function() {
     switchTab('tab-dashboard');
 };
 
-window.captureAndAnalyze = async function() {
+// Extracted logic for analysis
+async function processBase64ImageAndAnalyze(base64Image) {
     if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
+    
+    // Pause video if playing
     const video = document.getElementById('live-camera');
-    const canvas = document.getElementById('camera-canvas');
-    if (!video.videoWidth) return;
-
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
-    const base64Image = canvas.toDataURL('image/jpeg', 0.6).split(',')[1];
-    
-    // Pause video
-    video.pause();
+    if(video) video.pause();
 
     const scanTitle = document.getElementById('scan-alert-title');
     const scanPrice = document.getElementById('scan-alert-price');
@@ -247,14 +239,22 @@ window.captureAndAnalyze = async function() {
     scanPrice.innerText = "...";
     scanMsg.innerText = "Extracting items and checking regional prices...";
     breakdown.innerHTML = "";
-    scanTitle.parentElement.className = "results-card high-contrast tier-caution";
+    
+    // Reset to caution style by default
+    scanTitle.parentElement.classList.remove('tier-overpriced', 'tier-fair');
+    scanTitle.parentElement.classList.add('tier-caution');
+    
     overlay.style.display = 'flex';
 
     try {
         const res = await fetch(API_BASE + '/api/v1/check-price-ocr', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ image_base64: base64Image, language: currentLang, region: getRegionFromCoordinates(userLocation.lat, userLocation.lng) })
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                image_base64: base64Image,
+                language: currentLang,
+                region: getRegionFromCoordinates(userLocation.lat, userLocation.lng)
+            })
         });
         
         if (res.status === 429) {
@@ -262,45 +262,80 @@ window.captureAndAnalyze = async function() {
         }
         
         const data = await res.json();
-
+        
         if (data.status === 'success' && data.result) {
             const r = data.result;
+            scanPrice.innerText = r.total_asked.toLocaleString() + " VND";
+            scanMsg.innerText = r.summary;
             
-            // Build Breakdown HTML
             let bHtml = "<strong>Item Breakdown:</strong><br/>";
             r.items_checked.forEach(item => {
                 const tier = item.db_tier || 'unknown';
-                bHtml += `- ${item.item_name}: ${item.unit_price.toLocaleString()} VND <em>(${tier.toUpperCase()})</em><br/>`;
+                bHtml += `<div style="display:flex; justify-content:space-between; margin-bottom:4px; padding-bottom:4px; border-bottom:1px solid rgba(255,255,255,0.1)">
+                    <span>${item.item_name}</span>
+                    <strong>${item.unit_price.toLocaleString()} VND <em style="font-size:0.8rem;opacity:0.8">(${tier.toUpperCase()})</em></strong>
+                </div>`;
             });
             breakdown.innerHTML = bHtml;
-
+            
             if (r.overall_verdict === 'overpriced') {
                 scanTitle.innerText = "OVERPRICED";
-                scanTitle.parentElement.className = "results-card high-contrast tier-danger";
+                scanTitle.parentElement.classList.remove('tier-caution', 'tier-fair');
+                scanTitle.parentElement.classList.add('tier-danger');
                 document.getElementById('btn-contribute').style.display = 'none';
-                window.evidenceBuffer.images.push(base64Image); // Save evidence
+                if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200]);
             } else if (r.overall_verdict === 'slightly_high') {
                 scanTitle.innerText = "SLIGHTLY HIGH";
-                scanTitle.parentElement.className = "results-card high-contrast tier-caution";
+                scanTitle.parentElement.classList.remove('tier-danger', 'tier-fair');
+                scanTitle.parentElement.classList.add('tier-caution');
                 document.getElementById('btn-contribute').style.display = 'none';
+                if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
             } else {
                 scanTitle.innerText = "FAIR PRICE";
-                scanTitle.parentElement.className = "results-card high-contrast tier-fair";
+                scanTitle.parentElement.classList.remove('tier-caution', 'tier-danger');
+                scanTitle.parentElement.classList.add('tier-fair');
                 document.getElementById('btn-contribute').style.display = 'block';
+                if (navigator.vibrate) navigator.vibrate([50, 50]);
             }
-            
-            window.lastScannedItems = r.items_checked;
-            scanPrice.innerText = r.total_asked.toLocaleString() + " VND";
-            scanMsg.innerText = r.summary;
         } else {
             scanTitle.innerText = "ERROR";
             scanMsg.innerText = data.message || "Failed to analyze image.";
         }
-    } catch (err) {
-        console.error(err);
+    } catch(e) {
         scanTitle.innerText = "NETWORK ERROR";
+        scanMsg.innerText = "Ensure backend is running.";
     }
+}
+
+window.captureAndAnalyze = async function() {
+    const video = document.getElementById('live-camera');
+    const canvas = document.getElementById('camera-canvas');
+    if (!video.videoWidth) return;
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    const base64Image = canvas.toDataURL('image/jpeg', 0.6).split(',')[1];
+    await processBase64ImageAndAnalyze(base64Image);
 };
+
+window.analyzeSample = function(imgUrl) {
+    const img = new Image();
+    img.crossOrigin = "Anonymous";
+    img.onload = function() {
+        const canvas = document.getElementById('camera-canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const base64Image = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
+        processBase64ImageAndAnalyze(base64Image);
+    };
+    img.src = imgUrl;
+};
+
 
 window.closePriceResults = function() {
     if (navigator.vibrate) navigator.vibrate(20);
