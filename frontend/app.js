@@ -146,15 +146,36 @@ async function doLocationReveal() {
         document.getElementById('sos-address').innerText = userLocation.name;
         document.getElementById('sos-coords').innerText = `${userLocation.lat.toFixed(4)}° N, ${userLocation.lng.toFixed(4)}° E`;
         document.getElementById('global-sos-btn').classList.remove('hidden');
+        document.getElementById('bottom-nav')?.classList.remove('hidden');
         switchTab('tab-dashboard');
     }, 4500);
 }
 
 // ── 2. TAB NAVIGATION ─────────────────────────────────────────
 window.switchTab = function(tabId) {
-    if (navigator.vibrate) navigator.vibrate(20);
+    if (navigator.vibrate) try { navigator.vibrate(20); } catch(e){}
+    
+    // 1. Switch Tab Content
     document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-    document.getElementById(tabId).classList.add('active');
+    const target = document.getElementById(tabId);
+    if (target) target.classList.add('active');
+    
+    // 2. Update Bottom Nav Highlight
+    document.querySelectorAll('.bottom-tab-bar .tab-item').forEach(btn => btn.classList.remove('active'));
+    if (tabId === 'tab-dashboard') document.getElementById('nav-home')?.classList.add('active');
+    else if (tabId === 'tab-scanner') document.getElementById('nav-scan')?.classList.add('active');
+    else if (tabId === 'tab-translate') document.getElementById('nav-chat')?.classList.add('active');
+    else if (tabId === 'tab-sos') document.getElementById('nav-sos')?.classList.add('active');
+    
+    // 3. Manage Map Visibility (Only show map on SOS or Reveal)
+    const mapBg = document.getElementById('global-map-bg');
+    if (mapBg) {
+        if (tabId === 'tab-location-reveal' || tabId === 'tab-sos') {
+            mapBg.style.display = 'block';
+        } else {
+            mapBg.style.display = 'none';
+        }
+    }
 };
 
 // ── 3. CAMERA SCANNER (Live Video) ─────────────────────────────
