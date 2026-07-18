@@ -375,13 +375,13 @@ Return a structured list of all items found."""
                             "quantity": types.Schema(type="NUMBER"),
                             "unit": types.Schema(type="STRING"),
                         },
-                        required=["item_name", "item_name_vi", "price_vnd", "quantity", "unit"]
+                        required=["item_name", "price_vnd"]
                     )
                 ),
                 "currency_detected": types.Schema(type="STRING"),
                 "language_detected": types.Schema(type="STRING")
             },
-            required=["items", "currency_detected", "language_detected"]
+            required=["items"]
         )
 
         response = client.models.generate_content(
@@ -397,9 +397,10 @@ Return a structured list of all items found."""
         if not response.text:
             return None
 
-        extraction = OCRExtractionResult(**json.loads(response.text))
-
-        # Check each item against the price database
+        # Parse json safely handling missing optional fields
+        import json
+        data_dict = json.loads(response.text)
+        
         items_checked = []
         total_asked = 0
         total_fair = 0
@@ -408,32 +409,40 @@ Return a structured list of all items found."""
 
         from app.data.price_db import search_item
         
-        for ocr_item in extraction.items:
+        raw_items = data_dict.get("items", [])
+        for ocr_item in raw_items:
+            item_name = ocr_item.get("item_name", "Unknown")
+            item_name_vi = ocr_item.get("item_name_vi", "")
+            price_vnd = float(ocr_item.get("price_vnd", 0.0))
+            quantity = float(ocr_item.get("quantity", 1.0))
+            unit = ocr_item.get("unit", "item")
+            
             # Search DB for canonical item name to prevent false "insufficient_data"
-            search_results = search_item(ocr_item.item_name_vi, region) if ocr_item.item_name_vi else []
+            search_results = search_item(item_name_vi, region) if item_name_vi else []
             if not search_results:
-                search_results = search_item(ocr_item.item_name, region)
+                search_results = search_item(item_name, region)
                 
             if search_results:
-                lookup_name = search_results[0]["item_name"]
+                lookup_name = search_results[0].item_name
             else:
-                lookup_name = ocr_item.item_name.lower().replace(" ", "_")
-            unit_price = ocr_item.price_vnd / max(ocr_item.quantity, 1.0)
+                lookup_name = item_name.lower().replace(" ", "_")
+                
+            unit_price = price_vnd / max(quantity, 1.0)
 
             # If unit is per-weight, flag it
             per_weight_warning = ""
-            if ocr_item.unit in ("100g", "kg", "lạng"):
-                per_weight_warning = f"Price is per {ocr_item.unit}! Actual cost depends on weight."
+            if unit in ("100g", "kg", "lạng"):
+                per_weight_warning = f"Price is per {unit}! Actual cost depends on weight."
 
             db_check = check_single_price(lookup_name, unit_price, region)
 
             item_result = {
-                "item_name": ocr_item.item_name,
-                "item_name_vi": ocr_item.item_name_vi,
-                "asked_price": ocr_item.price_vnd,
+                "item_name": item_name,
+                "item_name_vi": item_name_vi,
+                "asked_price": price_vnd,
                 "unit_price": unit_price,
-                "quantity": ocr_item.quantity,
-                "unit": ocr_item.unit,
+                "quantity": quantity,
+                "unit": unit,
                 "per_weight_warning": per_weight_warning,
                 "db_tier": db_check.tier,
                 "db_median_price": db_check.median_price,
@@ -443,17 +452,18 @@ Return a structured list of all items found."""
             }
             items_checked.append(item_result)
 
-            total_asked += ocr_item.price_vnd
+            total_asked += price_vnd
             if db_check.median_price > 0:
-                total_fair += db_check.median_price * max(ocr_item.quantity, 1.0)
+                total_fair += db_check.median_price * max(quantity, 1.0)
 
             if tier_rank.get(db_check.tier, 0) > tier_rank.get(worst_tier, 0):
                 worst_tier = db_check.tier
 
         # Currency warning
         currency_warning = ""
-        if extraction.currency_detected != "VND":
-            currency_warning = (f"WARNING: Prices appear to be in {extraction.currency_detected}, "
+        currency_detected = data_dict.get("currency_detected", "VND")
+        if currency_detected != "VND":
+            currency_warning = (f"WARNING: Prices appear to be in {currency_detected}, "
                               f"not VND! This could be a dual-currency trap.")
 
         # Summary
