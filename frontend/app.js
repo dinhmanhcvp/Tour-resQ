@@ -187,6 +187,11 @@ window.switchTab = function(tabId) {
     if (mapBg) {
         if (tabId === 'tab-location-reveal' || tabId === 'tab-sos') {
             mapBg.style.display = 'block';
+            if (globalMap) {
+                setTimeout(() => {
+                    globalMap.invalidateSize();
+                }, 100);
+            }
         } else {
             mapBg.style.display = 'none';
         }
