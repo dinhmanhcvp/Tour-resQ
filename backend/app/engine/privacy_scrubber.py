@@ -19,4 +19,10 @@ def scrub_pii(text: str) -> str:
     passport_pattern = r'\b[A-Z]{1,2}[0-9]{6,7}\b'
     text = re.sub(passport_pattern, '[REDACTED_PASSPORT]', text)
 
+    # 4. Specific Address (House numbers, alleys) to keep location generic (street/ward level)
+    # Matches "số 12", "ngõ 34A", "hẻm 5", "tầng 3"
+    address_pattern = r'(?i)\b(số nhà|số|ngõ|hẻm|tầng|phòng)\s*\d+[a-zA-Z]*\b'
+    text = re.sub(address_pattern, '[REDACTED_LOC]', text)
+
     return text
+

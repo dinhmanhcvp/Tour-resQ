@@ -383,6 +383,31 @@ def add_verified_price(region: str, category: str, item_name: str,
     return True
 
 
+def add_ambient_price(region: str, item_name: str, price_vnd: int) -> bool:
+    """
+    Add a price extracted passively from ambient audio (Live Translation/Guardian).
+    Does NOT store device_id to ensure absolute privacy.
+    Source is tagged as 'ambient_audio'.
+    """
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        INSERT INTO price_references
+            (region, category, item_name, item_name_vi, price_vnd,
+             source, venue_type, is_verified)
+        VALUES (?, 'food', ?, '', ?, 'ambient_audio', 'street', 1)
+    """, (region, item_name, price_vnd))
+
+    conn.commit()
+    rebuild_price_stats(conn)
+    conn.close()
+
+    logger.info(f"Ambient Price collected anonymously: {item_name} = {price_vnd} VND in {region}")
+    return True
+
+
+
 def search_item(query: str, region: str = "") -> list[dict]:
     """
     Search for items matching a query string.

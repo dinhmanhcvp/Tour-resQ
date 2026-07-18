@@ -1,0 +1,20 @@
+[
+    {
+        "image": "receipt1.jpg",
+        "success": true,
+        "total_asked": 55000.0,
+        "items_count": 2
+    },
+    {
+        "image": "receipt2.jpg",
+        "success": true,
+        "total_asked": 55000.0,
+        "items_count": 2
+    },
+    {
+        "image": "receipt3.jpg",
+        "success": true,
+        "total_asked": 50000.0,
+        "items_count": 1
+    }
+]

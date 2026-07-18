@@ -1,12 +1,15 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 from typing import Dict, List, Optional
 import uuid
 import datetime
+import json
+import re
 
 from app.engine.translator import translate_text
 from app.engine.privacy_scrubber import scrub_pii
 from app.core.config import settings
+from app.data.price_db import add_ambient_price
 
 router = APIRouter()
 
@@ -24,6 +27,7 @@ class LiveMessageRequest(BaseModel):
 class LiveConcludeRequest(BaseModel):
     session_id: str
     tourist_lang: str = "en"
+    region: str = "hanoi"  # Used for ambient data context
 
 @router.post("/api/v1/live/start")
 async def start_session():
@@ -64,7 +68,6 @@ async def process_live_message(req: LiveMessageRequest):
         "timestamp": datetime.datetime.utcnow().isoformat()
     })
 
-    import re
     combined_text = (safe_text + " " + translated_text).lower()
     is_price_discussion = bool(re.search(r'\d+|price|cost|money|vnd|dong|bao nhiêu|tiền|giá|đắt', combined_text))
     is_suspicious = bool(re.search(r'police|fake|scam|lừa|cảnh sát|bắt|đóng cửa|không mua|ép|đánh|chết', combined_text))
@@ -78,11 +81,50 @@ async def process_live_message(req: LiveMessageRequest):
         "is_suspicious": is_suspicious
     }
 
+
+def process_ambient_telemetry(transcript: str, region: str):
+    """
+    Background task to extract prices passively from conversation logs 
+    and save them anonymously to the DB.
+    """
+    try:
+        import google.generativeai as genai
+        genai.configure(api_key=settings.gemini_key)
+        model = genai.GenerativeModel("gemini-2.0-flash")
+        
+        prompt = f"""Analyze this scrubbed negotiation transcript.
+Extract any mentioned items and their finalized or offered price in VND.
+Return ONLY valid JSON in this format:
+{{"items": [{{"item_name": "bánh mì", "price_vnd": 30000}}]}}
+If no prices or items are clearly mentioned, return {{"items": []}}.
+Do not include any other text or markdown.
+
+Transcript:
+{transcript}"""
+
+        response = model.generate_content(
+            prompt,
+            generation_config=genai.GenerationConfig(temperature=0.1)
+        )
+        
+        raw_text = response.text.strip().removeprefix('```json').removesuffix('```').strip()
+        data = json.loads(raw_text)
+        
+        for item in data.get("items", []):
+            item_name = item.get("item_name")
+            price_vnd = item.get("price_vnd")
+            if item_name and price_vnd and price_vnd > 0:
+                add_ambient_price(region, item_name, int(price_vnd))
+                
+    except Exception as e:
+        pass # Silently fail background telemetry
+
+
 @router.post("/api/v1/live/conclude")
-async def conclude_live_session(req: LiveConcludeRequest):
+async def conclude_live_session(req: LiveConcludeRequest, bg_tasks: BackgroundTasks):
     """
     Conclude the session. Analyzes the entire transcript for scam indicators,
-    pressure tactics, and price anomalies.
+    and runs ambient telemetry extraction in the background.
     """
     if req.session_id not in active_sessions or not active_sessions[req.session_id]:
         return {"status": "error", "message": "Session not found or empty."}
@@ -126,6 +168,9 @@ Respond in {target_lang}. Keep it under 60 words. Use bullet points."""
         
         analysis = response.text.strip() if response and response.text else "Analysis failed."
         
+        # Trigger ambient data collection in the background
+        bg_tasks.add_task(process_ambient_telemetry, transcript, req.region)
+
         # Cleanup session to free memory
         del active_sessions[req.session_id]
         
