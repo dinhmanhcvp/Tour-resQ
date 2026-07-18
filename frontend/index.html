@@ -28,7 +28,7 @@
             <div class="home-logo">
                 <img src="logo.png" alt="Tour-resQ Logo" class="app-logo">
                 <h1 id="home-title" data-i18n="app.name">Tour-resQ</h1>
-                <p data-i18n="app.tagline">Your safety companion in Vietnam</p>
+                <p data-i18n="app.tagline">Your smart local guide & travel companion</p>
             </div>
             
             <div class="permission-card">
@@ -71,17 +71,17 @@
             <div class="dash-grid">
                 <button class="dash-card" onclick="startCameraScan()">
                     <div class="icon-wrap">📸</div>
-                    <h3>Scan Bill</h3>
-                    <p>Check prices instantly</p>
+                    <h3>Magic Menu</h3>
+                    <p>Translate & check prices</p>
                 </button>
                 <button class="dash-card" onclick="startLiveTranslate()">
                     <div class="icon-wrap" style="color:var(--police-blue)">🎙️</div>
-                    <h3>Live Translate</h3>
-                    <p>Negotiate safely</p>
+                    <h3>Local Chat</h3>
+                    <p>Talk to locals smoothly</p>
                 </button>
             </div>
             <div class="dash-footer" style="margin-top:20px; padding:0 20px;">
-                <button class="btn-giant-action" style="width:100%" onclick="switchTab('tab-guardian')">The Guardian (Scam Radar)</button>
+                <button class="btn-giant-action" style="width:100%" onclick="switchTab('tab-guardian')">Local AI Assistant</button>
             </div>
         </section>
 
@@ -99,8 +99,8 @@
                 </div>
             </div>
             <header class="assistive-header">
-                <h1 id="scanner-title">Live Scanner</h1>
-                <p>Align bill inside frame</p>
+                <h1 id="scanner-title">Magic Menu Scanner</h1>
+                <p>Point at menu or bill to verify</p>
             </header>
             <div class="assistive-controls" style="display:flex; gap:10px;">
                 <button class="btn-giant-action btn-neon-green" onclick="captureAndAnalyze()" style="flex:1;">
@@ -148,8 +148,8 @@
         <section id="tab-guardian" class="tab-content">
             <div class="guardian-layout">
                 <header class="guardian-header">
-                    <h1>The Guardian</h1>
-                    <p>Describe situation</p>
+                    <h1>Local AI Assistant</h1>
+                    <p>Ask advice or verify a situation</p>
                 </header>
                 <div class="radar-container">
                     <div class="radar-ping"></div><div class="radar-ping delay"></div>
@@ -182,7 +182,7 @@
             <div class="sos-layout">
                 <header class="sos-header">
                     <div class="pulse-dot"></div>
-                    <h1>Emergency Hub</h1>
+                    <h1>Support & Emergency</h1>
                 </header>
                 <button class="btn-giant-close" style="margin-bottom:10px" onclick="switchTab('tab-dashboard')">BACK</button>
                 <div class="location-card">
