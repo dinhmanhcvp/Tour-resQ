@@ -494,7 +494,7 @@ async function contributePrice() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     region: getRegionFromCoordinates(userLocation.lat, userLocation.lng), category: "food", item_name: item.item_name, item_name_vi: item.item_name_vi,
-                    price_vnd: Math.round(item.unit_price), venue_type: "street", device_id: 'dev123'
+                    price_vnd: Math.round(item.unit_price), venue_type: "street"
                 })
             });
         }

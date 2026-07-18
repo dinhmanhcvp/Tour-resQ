@@ -321,10 +321,10 @@ async def contribute_price(req: ContributePriceRequest, request: Request):
     """
     # Validate: only accept prices that are within normal range
     existing = check_single_price(req.item_name, req.price_vnd, req.region)
-    if existing.tier == "overpriced":
+    if existing.tier != "fair":
         return {
             "status": "rejected",
-            "message": "Price appears abnormally high. Only fair prices are accepted to prevent data poisoning.",
+            "message": "Only prices already validated as fair can be contributed to prevent data poisoning.",
             "existing_range": existing.price_range,
         }
 

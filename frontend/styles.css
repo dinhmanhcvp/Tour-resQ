@@ -185,8 +185,8 @@ h1, h2, h3, h4 { font-family: var(--font-display); }
 .hidden-file-input { position: fixed; left: -9999px; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 
 /* ── BOTTOM SHEET (Results) ──────────────────────────────── */
-.results-overlay { position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,0.4); display: flex; align-items: flex-end; }
-.bottom-sheet { width: 100%; padding: 2rem 1.5rem; border-radius: 32px 32px 0 0; border-bottom: none; transform: translateY(100%); animation: slideUp 0.4s var(--spring) forwards; }
+.results-overlay { position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,0.4); display: flex; align-items: flex-end; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.bottom-sheet { width: 100%; max-height: 85vh; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 2rem 1.5rem calc(2rem + env(safe-area-inset-bottom, 20px)); border-radius: 32px 32px 0 0; border-bottom: none; transform: translateY(100%); animation: slideUp 0.4s var(--spring) forwards; }
 @keyframes slideUp { to { transform: translateY(0); } }
 .sheet-handle { width: 40px; height: 5px; background: rgba(255,255,255,0.2); border-radius: 5px; margin: 0 auto 1.5rem auto; }
 .sheet-header { display: flex; align-items: center; gap: 10px; margin-bottom: 1rem; }
@@ -196,7 +196,7 @@ h1, h2, h3, h4 { font-family: var(--font-display); }
 .tier-overpriced .alert-title, .tier-overpriced .alert-icon { color: var(--danger-red); }
 .tier-overpriced .alert-price { color: white; }
 
-.sheet-actions { display: flex; gap: 1rem; margin-top: 1.5rem; }
+.sheet-actions { display: flex; gap: 1rem; margin-top: 1.5rem; padding-bottom: env(safe-area-inset-bottom, 20px); }
 .btn-pill { flex: 1; padding: 1rem; border-radius: 100px; font-family: var(--font-display); font-weight: 700; border: none; cursor: pointer; text-align: center; }
 .btn-solid { background: white; color: black; }
 .btn-outline { background: transparent; border: 1px solid rgba(255,255,255,0.3); color: white; }

@@ -5,25 +5,24 @@
 [![VAIC 2026](https://img.shields.io/badge/VAIC-2026-blue?style=flat-square)](https://vaic.vn)
 [![Python](https://img.shields.io/badge/Python-3.12-blue?style=flat-square&logo=python)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-green?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com)
-[![Gemini](https://img.shields.io/badge/Gemini-2.0_Flash-purple?style=flat-square&logo=google)](https://ai.google.dev)
+[![Gemini](https://img.shields.io/badge/Gemini-2.5_Flash-purple?style=flat-square&logo=google)](https://ai.google.dev)
 
 ## 📌 VAIC 2026 Deliverables
-- **Live Deployed URL:** [DEPLOYED_URL_PENDING](https://tour-resq.example.com) <!-- TODO: Thay thế bằng domain thực tế trước khi nộp -->
-- **Demo Video (≤ 5 min):** [YOUTUBE_LINK_PENDING](https://youtube.com) <!-- TODO: Cập nhật link YouTube thật -->
-- **Presentation Slides:** [CANVA_LINK_PENDING](https://canva.com) <!-- TODO: Cập nhật link Canva thật -->
-- **GitHub Repository:** [Public Repo](https://github.com/dinhmanhcvp/Tour-resQ)
+- **Live Deployed URL:** [https://touresq.vercel.app](https://touresq.vercel.app)
+- **Backend API:** [https://tour-resq-production.up.railway.app](https://tour-resq-production.up.railway.app/health)
+- **GitHub Repository:** [https://github.com/dinhmanhcvp/Tour-resQ](https://github.com/dinhmanhcvp/Tour-resQ)
 - **AI Collaboration Log:** [ai_collaboration_log.md](./ai_collaboration_log.md)
 
 ## 🏆 How Tour-resQ Meets VAIC 2026 Criteria
 
 | Criterion | Tour-resQ Implementation |
 |-----------|--------------------------|
-| **1. Technical Implementation (20 pts)** | Full-stack deployment with Vanilla JS (Edge-optimized) & FastAPI. Replaced standard AVG with **Robust Statistics (Median/MAD)** to prevent DB poisoning. Tested with 0.0% False Positives. |
-| **2. AI-Native Architecture (20 pts)** | Not a chatbot wrapper. Uses **Agentic Workflow**: Gemini Vision extracts items -> DB calculates Z-Score mathematically -> LLM outputs localized translation. |
-| **3. Business Viability (20 pts)** | Solves a massive pain point for Vietnam Tourism (overcharging/scams). Monetization possible via Tourism Board partnerships or premium concierge. |
-| **4. AI-Native UX (15 pts)** | "Panic-Mode" UI with Slide-to-SOS. Flag-based language selection (no text barriers). One-tap picture scanning. |
-| **5. AI Safety & Grounding (15 pts)** | **Privacy First**: Canvas compresses images & strips EXIF metadata on the browser. Explicit GPS consent. Rate Limit (`slowapi`) implemented to prevent spam. AI hallucination is 0% on pricing due to mathematical Grounding. |
-| **6. Presentation & Defensibility (10 pts)** | Backed by a custom `test_metrics.py` showing 100% Scam Recall and 0.0% False Positive Rate. Highly defensible against edge cases. |
+| **1. Technical Implementation (20 pts)** | Full-stack: Vanilla JS frontend (Vercel) + FastAPI backend (Railway) + SQLite. Robust Statistics (Median/MAD) for anomaly detection. CI/CD via GitHub auto-deploy. |
+| **2. AI-Native Architecture (20 pts)** | AI is the core, not an add-on. **Agentic pipeline**: Gemini 2.5 Flash Vision OCR → Statistical Z-Score engine → LLM contextual translation. Dual-layer scam detection (keyword + AI reasoning). |
+| **3. Business Viability (20 pts)** | Addresses $3.5B tourism protection gap. Crowdsourced price data grows with each user. Pilot-ready for Hanoi, scalable to 6+ cities. |
+| **4. AI-Native UX (15 pts)** | "Panic-Mode" mobile-first UI. Slide-to-SOS. Flag-based language selection (no text barriers). Camera-first scanning. Show-to-vendor confrontation mode. |
+| **5. AI Safety & Grounding (15 pts)** | **Privacy-minimized cloud inference**: Canvas compresses & strips EXIF on-device. No user accounts. No PII stored. AI grounded by statistical Z-Score (never hallucinated pricing). `requires_human_confirmation` flag for low-confidence results. |
+| **6. Presentation & Defensibility (10 pts)** | Tested on real Vietnamese receipts (handwritten, abbreviated). Z-Score algorithm mathematically prevents false positives. |
 
 ## Problem
 
@@ -35,27 +34,36 @@ International tourists in Vietnam face **information asymmetry** that leads to:
 
 **No AI tool currently protects tourists in real time.** Tour-resQ changes that.
 
+## Target Users
+
+| Persona | Description | Key Need |
+|---------|-------------|----------|
+| 🇰🇷 Korean Solo Traveler | 20-35 years old, budget trips to Da Nang/Hoi An | Real-time price verification at restaurants |
+| 🇨🇳 Chinese Tour Group | Group tours with language barrier | Emergency translation during disputes |
+| 🇬🇧 English Backpacker | Long-stay, street food explorer | Scam pattern detection (taxi, tour) |
+| 🇷🇺 Russian Resort Tourist | Nha Trang/Phu Quoc beach resorts | SOS hotline access with translation |
+
 ## Features
 
-### 1. Instant Price Check
-Photograph a receipt, menu, or price board -> AI extracts items via OCR -> compares against a **self-updating regional price database** (6 cities, 100+ items) -> returns a **3-tier verdict** with statistical grounding:
+### 1. Instant Price Check (OCR → Z-Score → Verdict)
+Photograph a receipt, menu, or price board → AI extracts items via Gemini 2.5 Flash Vision → compares against a **self-updating regional price database** (6 cities, 100+ items) → returns a **3-tier verdict** with statistical grounding:
 
 | Tier | Meaning | Z-Score |
 |------|---------|---------|
-| Fair | Within normal range | <= 1.0 sigma |
-| Slightly High | Above average, may be normal for venue type | 1.0-2.0 sigma |
-| Overpriced | Significantly above regional average | > 2.0 sigma |
+| ✅ Fair | Within normal range | <= 1.0 sigma |
+| ⚠️ Slightly High | Above average, may be normal for venue type | 1.0-2.0 sigma |
+| 🚨 Overpriced | Significantly above regional average | > 2.0 sigma |
 
-### 2. Scam Detection
-Describe a suspicious situation (voice or text, in **any of the 4 supported languages**) -> the system runs **dual-layer analysis**:
-- **Layer 1**: Fast keyword matching across KO/ZH/EN/RU/VI (works offline)
-- **Layer 2**: Gemini AI contextual analysis with Vietnam-specific advice
+### 2. Scam Detection (Dual-Layer)
+Describe a suspicious situation (voice or text, in **any of the 4 supported languages**) → the system runs **dual-layer analysis**:
+- **Layer 1**: Fast multilingual keyword matching across KO/ZH/EN/RU/VI (works offline)
+- **Layer 2**: Gemini AI contextual analysis with Vietnam-specific actionable advice
 
 ### 3. SOS Emergency Dispatch
-One tap (or **shake phone 3x**) -> auto-captures GPS -> packages incident context -> dispatches to control center via webhook -> provides immediate hotline info with **localized phone numbers**.
+Slide-to-SOS gesture → auto-captures GPS → packages incident context → dispatches to control center → provides immediate hotline info with **localized phone numbers**.
 
 ### 4. Domain-Adapted Translation
-Not generic Google Translate - context-aware translation for **confrontation scenarios** (price disputes, scams). Includes:
+Context-aware translation for **confrontation scenarios** (price disputes, scams). Includes:
 - **Offline Phrasebook** — pre-translated phrases to show vendors
 - **Voice Input** — Web Speech API in KO/ZH/EN/RU
 - **Show-to-Vendor Mode** — large Vietnamese text for showing your phone
@@ -77,17 +85,18 @@ Language selection uses **flags, not text** — eliminating language barriers fr
 ┌─────────────────────────────────────┐
 │          Frontend (Mobile-First)     │
 │  HTML/CSS/JS · Voice · Camera · GPS  │
+│  Vercel Edge Network (Global CDN)    │
 └─────────────┬───────────────────────┘
-              │ REST API
+              │ REST API (HTTPS)
 ┌─────────────▼───────────────────────┐
-│          FastAPI Backend             │
+│          FastAPI Backend (Railway)    │
 ├──────────────────────────────────────┤
 │  i18n System (70+ keys × 4 lang)     │
 ├──────────────────────────────────────┤
 │  Price Check Engine                  │
-│  ├─ Gemini Vision OCR                │
+│  ├─ Gemini 2.5 Flash Vision OCR      │
 │  ├─ SQLite Price DB (self-updating)  │
-│  └─ Z-Score Anomaly Detection        │
+│  └─ Z-Score Anomaly Detection (MAD)  │
 ├──────────────────────────────────────┤
 │  Scam Detector                       │
 │  ├─ Multilingual Keyword Matching    │
@@ -99,9 +108,18 @@ Language selection uses **flags, not text** — eliminating language barriers fr
 ├──────────────────────────────────────┤
 │  SOS Dispatcher                      │
 │  ├─ GPS + Photo + Context            │
-│  └─ Webhook -> Google Sheets         │
+│  └─ Webhook → Google Sheets         │
 └──────────────────────────────────────┘
 ```
+
+## Data Strategy: Crowdsourced Price Intelligence
+
+> **The core innovation**: Reference-price data is undigitized. Tour-resQ solves this with a **community-driven flywheel**.
+
+1. **Seed Data**: 101 items × 6 regions bootstrapped from local surveys
+2. **"I PAID THIS" Button**: After each fair-price verification, tourists contribute their actual price
+3. **Anti-Poisoning**: Contributions are only accepted when the price falls within the "fair" Z-Score range
+4. **Continuous Learning**: Each contribution strengthens Median/MAD statistics, improving accuracy over time
 
 ## Quick Start
 
@@ -111,18 +129,10 @@ Language selection uses **flags, not text** — eliminating language barriers fr
 
 ### Setup
 ```bash
-# Clone
 git clone https://github.com/dinhmanhcvp/Tour-resQ.git
 cd tour-resq/backend
-
-# Install dependencies
 pip install -r requirements.txt
-
-# Configure
-cp .env.example .env
-# Edit .env and add your GEMINI_API_KEY
-
-# Run
+cp .env.example .env  # Edit and add GEMINI_API_KEY
 python main.py
 ```
 
@@ -131,41 +141,13 @@ python main.py
 - **API Docs**: http://localhost:8000/docs
 - **Health Check**: http://localhost:8000/health
 
-## Project Structure
-
-```
-tour-resq/
-├── backend/
-│   ├── main.py                    # FastAPI app entry point
-│   ├── requirements.txt
-│   ├── .env.example
-│   ├── app/
-│   │   ├── api/routes.py          # All REST endpoints
-│   │   ├── core/config.py         # Settings & environment
-│   │   ├── i18n/translations.py   # 70+ keys × 4 languages
-│   │   ├── data/
-│   │   │   ├── price_db.py        # SQLite price database
-│   │   │   └── seed_prices.json   # 101 bootstrap prices
-│   │   └── engine/
-│   │       ├── price_checker.py   # 3-tier anomaly detection
-│   │       ├── scam_detector.py   # Dual-layer detection
-│   │       ├── translator.py      # Domain-adapted translation
-│   │       └── sos_dispatcher.py  # Emergency dispatch
-│   └── test_quick.py              # Quick validation tests
-├── frontend/
-│   ├── index.html                 # Mobile-first SPA
-│   ├── styles.css                 # Dark mode, premium UX
-│   └── app.js                     # Camera, voice, GPS, haptics
-└── README.md
-```
-
 ## API Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `POST` | `/api/v1/analyze-situation` | Combined price + scam analysis from text |
 | `POST` | `/api/v1/check-price` | DB-backed price check with Z-score |
-| `POST` | `/api/v1/check-price-ocr` | Full OCR pipeline: photo -> item extraction -> DB check |
+| `POST` | `/api/v1/check-price-ocr` | Full OCR pipeline: photo → item extraction → DB check |
 | `POST` | `/api/v1/analyze-vision` | Vision AI for menu/receipt forgery detection |
 | `POST` | `/api/v1/contribute-price` | Submit verified fair price (anti-poisoning) |
 | `POST` | `/api/v1/translate` | Domain-adapted translation |
@@ -175,8 +157,6 @@ tour-resq/
 | `GET`  | `/api/v1/emergency-info` | Hotline numbers (works offline) |
 | `POST` | `/api/v1/dispatch-report` | Send report to nearest authority |
 | `GET`  | `/api/v1/heatmap/data` | Crowdsourced scam heatmap data |
-| `GET`  | `/api/v1/languages` | Supported languages |
-| `GET`  | `/api/v1/translations` | Batch UI translations |
 
 ## AI Safety & Trust
 
@@ -185,7 +165,23 @@ tour-resq/
 - **False positive mitigation** — requires 2+ keyword matches for scam detection
 - **Confidence threshold** — says "insufficient data" when sample size < 5
 - **Self-updating** — fair prices automatically strengthen the database
-- **Privacy-first** — no user accounts, no persistent tracking, GPS only on SOS
+- **Privacy-minimized cloud inference** — no user accounts, no persistent tracking; images compressed & EXIF-stripped on-device before upload; GPS used only for region resolution, not stored server-side
+
+## Pilot Roadmap
+
+| Phase | Timeline | Scope | Metrics |
+|-------|----------|-------|---------|
+| **Phase 1: MVP** | Month 1-2 | Hanoi Old Quarter (100 restaurants) | Price accuracy >90%, <5% false positive |
+| **Phase 2: Expand** | Month 3-6 | 6 cities (Hanoi, HCMC, Da Nang, Hoi An, Nha Trang, Phu Quoc) | 10K+ monthly active users |
+| **Phase 3: Scale** | Month 6-12 | Nationwide + App stores (iOS/Android PWA) | Partnership with Vietnam Tourism Board |
+
+## Limitations & Future Work
+
+- **OCR Accuracy**: Handwritten Vietnamese receipts can be challenging; ongoing prompt tuning improves results
+- **Price Data Coverage**: Currently bootstrapped with 101 items; grows with user contributions
+- **Scam Patterns**: AI analysis depends on user description quality; voice input helps
+- **Privacy**: Currently privacy-minimized cloud inference (Gemini API); future work includes on-device models for fully offline operation
+- **Language Coverage**: Web Speech API quality varies by browser/OS for Korean and Russian
 
 ## VAIC 2026
 
