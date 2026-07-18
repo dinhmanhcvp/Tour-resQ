@@ -116,10 +116,10 @@
             </header>
             
             <div class="assistive-controls glass-controls">
-                <label class="btn-icon-circular" title="Upload Image" style="cursor: pointer; display: flex; align-items: center; justify-content: center; margin: 0;">
-                    <input type="file" id="bill-upload" accept="image/*" style="position: absolute; width: 0; height: 0; opacity: 0;" onchange="handleBillUpload(event)">
+                <input type="file" id="bill-upload" accept="image/*" class="hidden-file-input" onchange="handleBillUpload(event)">
+                <button type="button" class="btn-icon-circular" title="Upload Image" aria-label="Upload bill image" onclick="triggerBillUpload()">
                     <i data-feather="image"></i>
-                </label>
+                </button>
                 <button class="btn-giant-action btn-neon-green" onclick="captureAndAnalyze()">
                     <i data-feather="aperture"></i> <span>ANALYZE</span>
                 </button>

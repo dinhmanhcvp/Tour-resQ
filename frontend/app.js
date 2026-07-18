@@ -265,6 +265,7 @@ async function processBase64ImageAndAnalyze(base64Image) {
         
         if (data.status === 'success' && data.result) {
             const r = data.result;
+            window.lastScannedItems = r.items_checked;
             scanPrice.innerText = r.total_asked.toLocaleString() + " VND";
             scanMsg.innerText = r.summary;
             
@@ -321,14 +322,23 @@ window.captureAndAnalyze = async function() {
     await processBase64ImageAndAnalyze(base64Image);
 };
 
+window.triggerBillUpload = function() {
+    const input = document.getElementById('bill-upload');
+    if (input) input.click();
+};
+
 window.handleBillUpload = function(event) {
     const file = event.target.files[0];
     if (!file) return;
+    if (!file.type.startsWith('image/')) {
+        alert('Please upload an image file.');
+        event.target.value = "";
+        return;
+    }
     
     const reader = new FileReader();
     reader.onload = function(e) {
         const img = new Image();
-        img.crossOrigin = "Anonymous";
         img.onload = function() {
             const canvas = document.getElementById('camera-canvas');
             canvas.width = img.width;
@@ -339,6 +349,10 @@ window.handleBillUpload = function(event) {
             processBase64ImageAndAnalyze(base64Image);
         };
         img.src = e.target.result;
+    };
+    reader.onerror = function() {
+        alert('Could not read this image. Please try another file.');
+        event.target.value = "";
     };
     reader.readAsDataURL(file);
     event.target.value = ""; // Reset input

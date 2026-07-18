@@ -179,6 +179,7 @@ h1, h2, h3, h4 { font-family: var(--font-display); }
 .btn-neon-green { background: var(--neon-green); color: black; }
 .btn-neon-green:active { transform: scale(0.95); background: white; }
 .btn-icon-circular { width: 64px; height: 64px; border-radius: 50%; border: none; background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); color: white; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.hidden-file-input { position: fixed; left: -9999px; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 
 /* ── BOTTOM SHEET (Results) ──────────────────────────────── */
 .results-overlay { position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,0.4); display: flex; align-items: flex-end; }
