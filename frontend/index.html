@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
     <script src="https://unpkg.com/feather-icons"></script>
-    <link rel="stylesheet" href="styles.css?v=20">
+    <link rel="stylesheet" href="styles.css?v=21">
 </head>
 <body class="dark-theme">
     <div id="global-map-bg" class="global-map-bg"></div>
@@ -147,14 +147,14 @@
                     <div class="alert-price" id="scan-alert-price">...</div>
                     <div class="breakdown-list custom-scrollbar" id="scan-breakdown"></div>
                     <div class="sheet-actions" style="flex-wrap: wrap; gap: 10px;">
-                        <button id="btn-contribute" class="btn-pill btn-outline" style="display:none; width:100%;" onclick="contributePrice()">I PAID THIS</button>
-                        <button id="btn-retry" class="btn-pill btn-outline" style="display:none; border-color: var(--neon-green); color: var(--neon-green); width:100%;" onclick="retryUpload()">RETRY UPLOAD</button>
+                        <button id="btn-contribute" class="btn-pill btn-outline" style="display:none; width:100%;" onclick="contributePrice()" data-i18n="scan.i_paid_this">I PAID THIS</button>
+                        <button id="btn-retry" class="btn-pill btn-outline" style="display:none; border-color: var(--neon-green); color: var(--neon-green); width:100%;" onclick="retryUpload()" data-i18n="scan.retry_upload">RETRY UPLOAD</button>
                         
                         <div style="display: flex; gap: 10px; width: 100%;">
-                            <button class="btn-pill btn-solid" style="flex:1;" onclick="closePriceResults()">CLOSE</button>
+                            <button class="btn-pill btn-solid" style="flex:1;" onclick="closePriceResults()" data-i18n="scan.close">CLOSE</button>
                             <label class="btn-pill btn-solid" style="flex:1; background: var(--neon-green); color: black; display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer;">
                                 <input type="file" accept="image/*" style="display:none;" onchange="closePriceResults(); handleBillUpload(event);">
-                                <i data-feather="upload" style="width:16px;height:16px;"></i> UPLOAD ANOTHER
+                                <i data-feather="upload" style="width:16px;height:16px;"></i> <span data-i18n="scan.upload_another">UPLOAD ANOTHER</span>
                             </label>
                         </div>
                     </div>
@@ -262,21 +262,21 @@
         <nav id="bottom-nav" class="floating-bottom-nav hidden">
             <div class="nav-pill glass-panel">
                 <button id="nav-home" class="nav-item" onclick="switchTab('tab-dashboard')">
-                    <i data-feather="grid"></i><span>Home</span>
+                    <i data-feather="grid"></i><span data-i18n="nav.home">Home</span>
                 </button>
                 <button id="nav-scan" class="nav-item" onclick="startCameraScan()">
-                    <i data-feather="maximize"></i><span>Scan</span>
+                    <i data-feather="maximize"></i><span data-i18n="nav.scanner">Scanner</span>
                 </button>
                 <button id="nav-chat" class="nav-item" onclick="startLiveTranslate()">
-                    <i data-feather="mic"></i><span>Chat</span>
+                    <i data-feather="mic"></i><span data-i18n="nav.translate">Translate</span>
                 </button>
                 <button id="nav-sos" class="nav-item danger" onclick="switchTab('tab-sos')">
-                    <i data-feather="alert-circle"></i><span>SOS</span>
+                    <i data-feather="alert-circle"></i><span data-i18n="nav.sos">SOS</span>
                 </button>
             </div>
         </nav>
     </main>
     <script>feather.replace();</script>
-    <script src="app.js?v=20"></script>
+    <script src="app.js?v=21"></script>
 </body>
 </html>

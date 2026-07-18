@@ -105,6 +105,9 @@ function applyTranslations() {
         }
     });
 }
+window.t = function(key, defaultVal) {
+    return translations[key] || defaultVal;
+};
 window.selectLanguage = function(lang) {
     if (navigator.vibrate) navigator.vibrate(20);
     currentLang = lang;
@@ -286,9 +289,9 @@ async function processBase64ImageAndAnalyze(base64Image) {
     const breakdown = document.getElementById('scan-breakdown');
     const overlay = document.getElementById('price-results-overlay');
 
-    scanTitle.innerText = "ANALYZING...";
+    scanTitle.innerText = t('scan.analyzing', "ANALYZING...");
     scanPrice.innerText = "...";
-    scanMsg.innerText = "Extracting items and checking regional prices...";
+    scanMsg.innerText = t('price.analyzing', "Extracting items and checking regional prices...");
     breakdown.innerHTML = "";
     
     // Reset to caution style by default
@@ -320,7 +323,7 @@ async function processBase64ImageAndAnalyze(base64Image) {
             scanPrice.innerHTML = formatCurrency(r.total_asked);
             scanMsg.innerText = r.summary;
             
-            let bHtml = "<strong>Item Breakdown:</strong><br/>";
+            let bHtml = `<strong>${t('scan.item_breakdown', 'Item Breakdown:')}</strong><br/>`;
             r.items_checked.forEach(item => {
                 const tier = item.db_tier || 'unknown';
                 bHtml += `<div style="display:flex; justify-content:space-between; margin-bottom:4px; padding-bottom:4px; border-bottom:1px solid rgba(255,255,255,0.1)">
@@ -333,21 +336,21 @@ async function processBase64ImageAndAnalyze(base64Image) {
             breakdown.innerHTML = bHtml;
             
             if (r.overall_verdict === 'overpriced') {
-                scanTitle.innerText = "OVERPRICED";
+                scanTitle.innerText = t('scan.overpriced', "OVERPRICED");
                 scanTitle.parentElement.classList.remove('tier-caution', 'tier-fair');
                 scanTitle.parentElement.classList.add('tier-danger');
                 document.getElementById('btn-contribute').style.display = 'none';
                 document.getElementById('btn-retry').style.display = 'none';
                 if (navigator.vibrate) try { navigator.vibrate([100, 50, 100, 50, 200]); } catch(e){}
             } else if (r.overall_verdict === 'slightly_high') {
-                scanTitle.innerText = "SLIGHTLY HIGH";
+                scanTitle.innerText = t('scan.slightly_high', "SLIGHTLY HIGH");
                 scanTitle.parentElement.classList.remove('tier-danger', 'tier-fair');
                 scanTitle.parentElement.classList.add('tier-caution');
                 document.getElementById('btn-contribute').style.display = 'none';
                 document.getElementById('btn-retry').style.display = 'none';
                 if (navigator.vibrate) try { navigator.vibrate([100, 50, 100]); } catch(e){}
             } else {
-                scanTitle.innerText = "FAIR PRICE";
+                scanTitle.innerText = t('scan.fair', "FAIR PRICE");
                 scanTitle.parentElement.classList.remove('tier-caution', 'tier-danger');
                 scanTitle.parentElement.classList.add('tier-fair');
                 document.getElementById('btn-contribute').style.display = 'block';
@@ -355,13 +358,13 @@ async function processBase64ImageAndAnalyze(base64Image) {
                 if (navigator.vibrate) try { navigator.vibrate([50, 50]); } catch(e){}
             }
         } else {
-            scanTitle.innerText = "ERROR";
+            scanTitle.innerText = t('scan.error', "ERROR");
             scanMsg.innerText = data.message || "Failed to analyze image.";
             document.getElementById('btn-contribute').style.display = 'none';
             document.getElementById('btn-retry').style.display = 'block';
         }
     } catch(e) {
-        scanTitle.innerText = "NETWORK ERROR";
+        scanTitle.innerText = t('scan.error', "NETWORK ERROR");
         scanMsg.innerText = "Ensure backend is running and reachable.";
         document.getElementById('btn-contribute').style.display = 'none';
         document.getElementById('btn-retry').style.display = 'block';

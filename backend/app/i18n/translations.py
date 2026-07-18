@@ -117,6 +117,98 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "ru": "Нажмите, чтобы отправить ваше местоположение",
     },
 
+    # ── UI Missing Strings ──────────────────────────────
+    "app.explore_now": {
+        "en": "EXPLORE NOW",
+        "ko": "지금 탐색",
+        "zh": "立即探索",
+        "ru": "ИССЛЕДОВАТЬ",
+    },
+    "nav.home": {
+        "en": "Home",
+        "ko": "홈",
+        "zh": "首页",
+        "ru": "Главная",
+    },
+    "nav.scanner": {
+        "en": "Scanner",
+        "ko": "스캐너",
+        "zh": "扫描仪",
+        "ru": "Сканер",
+    },
+    "scan.point_camera": {
+        "en": "POINT CAMERA AT PRICE",
+        "ko": "가격을 비추세요",
+        "zh": "将相机对准价格",
+        "ru": "НАВЕДИТЕ КАМЕРУ НА ЦЕНУ",
+    },
+    "scan.analyze": {
+        "en": "ANALYZE",
+        "ko": "분석",
+        "zh": "分析",
+        "ru": "АНАЛИЗ",
+    },
+    "scan.analyzing": {
+        "en": "ANALYZING...",
+        "ko": "분석 중...",
+        "zh": "分析中...",
+        "ru": "АНАЛИЗ...",
+    },
+    "scan.item_breakdown": {
+        "en": "Item Breakdown",
+        "ko": "항목 내역",
+        "zh": "明细",
+        "ru": "Детализация",
+    },
+    "scan.overpriced": {
+        "en": "OVERPRICED",
+        "ko": "바가지 요금",
+        "zh": "价格过高",
+        "ru": "ЗАВЫШЕНА",
+    },
+    "scan.slightly_high": {
+        "en": "SLIGHTLY HIGH",
+        "ko": "약간 높음",
+        "zh": "略高",
+        "ru": "НЕМНОГО ЗАВЫШЕНА",
+    },
+    "scan.fair": {
+        "en": "FAIR PRICE",
+        "ko": "적정 가격",
+        "zh": "合理价格",
+        "ru": "СПРАВЕДЛИВАЯ ЦЕНА",
+    },
+    "scan.error": {
+        "en": "ERROR",
+        "ko": "오류",
+        "zh": "错误",
+        "ru": "ОШИБКА",
+    },
+    "scan.upload_another": {
+        "en": "UPLOAD ANOTHER",
+        "ko": "다른 사진 업로드",
+        "zh": "上传另一张",
+        "ru": "ЗАГРУЗИТЬ ЕЩЕ",
+    },
+    "scan.close": {
+        "en": "CLOSE",
+        "ko": "닫기",
+        "zh": "关闭",
+        "ru": "ЗАКРЫТЬ",
+    },
+    "scan.i_paid_this": {
+        "en": "I PAID THIS",
+        "ko": "이 가격을 지불했습니다",
+        "zh": "我付了这个价",
+        "ru": "Я ЗАПЛАТИЛ ЭТО",
+    },
+    "scan.retry_upload": {
+        "en": "RETRY UPLOAD",
+        "ko": "다시 업로드",
+        "zh": "重试上传",
+        "ru": "ПОВТОРИТЬ",
+    },
+
     # ── Price Check Module ───────────────────────────────
     "price.region": {
         "en": "📍 Region:",
