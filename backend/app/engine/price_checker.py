@@ -344,16 +344,17 @@ async def check_price_from_image(
 
     client = genai.Client(api_key=settings.gemini_key)
 
-    prompt = """You are an OCR expert analyzing a Vietnamese restaurant menu, receipt, or price board.
+    prompt = """You are an expert fraud investigator and OCR specialist analyzing a Vietnamese restaurant menu, handwritten receipt, or price board.
 
-Extract ALL items with their prices. Pay close attention to:
-1. Hidden per-unit pricing (e.g. /100g, /lạng, /kg next to a seemingly cheap price)
-2. Currency symbols - is this VND or USD or another currency?
-3. Quantity notations
-4. If prices use 'k' notation, convert to full VND (45k = 45000)
-5. CRITICAL: DO NOT extract the 'Total', 'Tổng cộng', 'Subtotal', or 'Thanh toán' rows as separate items. Only extract the actual purchased goods/services.
+Extract ALL purchased items with their prices. Your analysis must handle the following extreme cases:
+1. HANDWRITTEN RECEIPTS: Carefully decipher messy handwriting, abbreviated Vietnamese names (e.g., 'mực nướng', 'cua rang me').
+2. FOREIGN LANGUAGES: If the menu/receipt is written in Chinese, Korean, English, or Russian, translate the item names to English for the 'item_name' field, but KEEP the original text in the 'item_name_vi' field (e.g. if it says 炒飯, put 'Fried Rice' as item_name and '炒飯' as item_name_vi).
+3. HIDDEN METRICS (The /100g trap): Look closely for tiny text like '/100g', '/lạng', '/kg' next to a seemingly cheap price.
+4. CURRENCY SYMBOLS: Determine if this is VND or USD. If 'k' notation is used (e.g. 45k), convert it to full VND (45000).
+5. IGNORE TOTALS: DO NOT extract 'Total', 'Tổng cộng', 'Subtotal', 'Tax', or 'Thanh toán' rows as separate items. ONLY extract the actual goods/services.
 
-Return a structured list of all items found."""
+Even if the receipt is extremely simple, blurry, or missing context, you MUST extract whatever items and prices you can see.
+Return a structured JSON list of all items found."""
 
     try:
         import base64
