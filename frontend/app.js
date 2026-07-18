@@ -3,7 +3,8 @@
  * Real API Integration with new Permission & Location Reveal flow.
  */
 
-const API_BASE = '';
+// Configuration
+const API_BASE = 'https://tour-resq-production.up.railway.app'; // Railway backend
 let currentLang = localStorage.getItem('tour_resq_lang') || document.documentElement.getAttribute('data-lang') || 'en';
 
 // Global Evidence Buffer
