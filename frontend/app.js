@@ -284,27 +284,34 @@ async function processBase64ImageAndAnalyze(base64Image) {
                 scanTitle.parentElement.classList.remove('tier-caution', 'tier-fair');
                 scanTitle.parentElement.classList.add('tier-danger');
                 document.getElementById('btn-contribute').style.display = 'none';
-                if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200]);
+                document.getElementById('btn-retry').style.display = 'none';
+                if (navigator.vibrate) try { navigator.vibrate([100, 50, 100, 50, 200]); } catch(e){}
             } else if (r.overall_verdict === 'slightly_high') {
                 scanTitle.innerText = "SLIGHTLY HIGH";
                 scanTitle.parentElement.classList.remove('tier-danger', 'tier-fair');
                 scanTitle.parentElement.classList.add('tier-caution');
                 document.getElementById('btn-contribute').style.display = 'none';
-                if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+                document.getElementById('btn-retry').style.display = 'none';
+                if (navigator.vibrate) try { navigator.vibrate([100, 50, 100]); } catch(e){}
             } else {
                 scanTitle.innerText = "FAIR PRICE";
                 scanTitle.parentElement.classList.remove('tier-caution', 'tier-danger');
                 scanTitle.parentElement.classList.add('tier-fair');
                 document.getElementById('btn-contribute').style.display = 'block';
-                if (navigator.vibrate) navigator.vibrate([50, 50]);
+                document.getElementById('btn-retry').style.display = 'none';
+                if (navigator.vibrate) try { navigator.vibrate([50, 50]); } catch(e){}
             }
         } else {
             scanTitle.innerText = "ERROR";
-            scanMsg.innerText = data.message || "Failed to analyze image.";
+            scanMsg.innerText = (data.message || "Failed to analyze image.") + "\n\n(Did you set GEMINI_API_KEY on Vercel?)";
+            document.getElementById('btn-contribute').style.display = 'none';
+            document.getElementById('btn-retry').style.display = 'block';
         }
     } catch(e) {
         scanTitle.innerText = "NETWORK ERROR";
-        scanMsg.innerText = "Ensure backend is running.";
+        scanMsg.innerText = "Ensure backend is running and reachable.";
+        document.getElementById('btn-contribute').style.display = 'none';
+        document.getElementById('btn-retry').style.display = 'block';
     }
 }
 
@@ -360,10 +367,23 @@ window.handleBillUpload = function(event) {
 
 
 window.closePriceResults = function() {
-    if (navigator.vibrate) navigator.vibrate(20);
-    document.getElementById('price-results-overlay').style.display = 'none';
-    const video = document.getElementById('live-camera');
-    if (video) video.play(); // Resume live view
+    try { if (navigator.vibrate) navigator.vibrate(20); } catch(e) {}
+    const overlay = document.getElementById('price-results-overlay');
+    if (overlay) overlay.style.display = 'none';
+    
+    // Attempt to resume video if it exists and has a stream
+    try {
+        const video = document.getElementById('live-camera');
+        if (video && video.srcObject) video.play();
+    } catch(e) {}
+};
+
+window.retryUpload = function() {
+    closePriceResults();
+    setTimeout(() => {
+        const input = document.getElementById('bill-upload');
+        if (input) input.click();
+    }, 300); // Wait for overlay to close
 };
 
 async function contributePrice() {
