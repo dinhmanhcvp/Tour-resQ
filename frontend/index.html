@@ -31,24 +31,23 @@
                 <p data-i18n="app.tagline">Your smart local guide & travel companion</p>
             </div>
             
-            <div class="permission-card">
-                <h2 style="margin-bottom:15px">Enable Features</h2>
-                <div class="perm-toggle">
-                    <span>📸 Camera</span>
-                    <label class="switch"><input type="checkbox" id="perm-cam" onchange="checkAllPerms()"><span class="slider round"></span></label>
+            <div class="status-badges">
+                <div class="badge" id="badge-cam">
+                    <span class="icon">📸</span>
+                    <span class="text">Camera</span>
                 </div>
-                <div class="perm-toggle">
-                    <span>🎙️ Microphone</span>
-                    <label class="switch"><input type="checkbox" id="perm-mic" onchange="checkAllPerms()"><span class="slider round"></span></label>
+                <div class="badge" id="badge-mic">
+                    <span class="icon">🎙️</span>
+                    <span class="text">Mic</span>
                 </div>
-                <div class="perm-toggle">
-                    <span>📍 Location</span>
-                    <label class="switch"><input type="checkbox" id="perm-gps" onchange="checkAllPerms()"><span class="slider round"></span></label>
+                <div class="badge" id="badge-gps">
+                    <span class="icon">📍</span>
+                    <span class="text">Location</span>
                 </div>
             </div>
             
-            <button id="btn-start-perms" class="btn-start-journey" disabled onclick="startJourney()">
-                START JOURNEY
+            <button id="btn-start-perms" class="btn-start-journey" onclick="startJourney()">
+                GRANT ACCESS & START
             </button>
         </section>
 

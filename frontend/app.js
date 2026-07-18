@@ -91,30 +91,33 @@ function updateLanguageUI(lang) {
 }
 
 // ── 1. ONBOARDING & PERMISSIONS ──────────────────────────────
-window.checkAllPerms = function() {
-    const cam = document.getElementById('perm-cam').checked;
-    const mic = document.getElementById('perm-mic').checked;
-    const gps = document.getElementById('perm-gps').checked;
-    document.getElementById('btn-start-perms').disabled = !(cam && mic && gps);
-};
-
 window.startJourney = async function() {
     if (navigator.vibrate) navigator.vibrate(30);
     const btn = document.getElementById('btn-start-perms');
     btn.innerHTML = "REQUESTING ACCESS...";
+    btn.disabled = true;
     
     try {
-        // Request Camera & Mic
+        // 1. Request Camera & Mic
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: true });
-        // We stop them immediately, just need permission granted
-        stream.getTracks().forEach(track => track.stop());
+        stream.getTracks().forEach(track => track.stop()); // Stop immediately
         
-        // Request GPS
+        // Update UI Badges
+        document.getElementById('badge-cam').classList.add('granted');
+        document.getElementById('badge-mic').classList.add('granted');
+        if (navigator.vibrate) navigator.vibrate(50);
+        
+        // 2. Request GPS
+        btn.innerHTML = "LOCATING...";
         navigator.geolocation.getCurrentPosition(
             async (pos) => {
+                document.getElementById('badge-gps').classList.add('granted');
+                if (navigator.vibrate) navigator.vibrate([50, 50]);
                 userLocation.lat = pos.coords.latitude;
                 userLocation.lng = pos.coords.longitude;
-                await doLocationReveal();
+                
+                // Cinematic Fade to Location Reveal
+                setTimeout(doLocationReveal, 800);
             },
             async (err) => {
                 console.warn("GPS failed, using fallback.");
@@ -123,8 +126,9 @@ window.startJourney = async function() {
             { enableHighAccuracy: true, timeout: 5000 }
         );
     } catch(e) {
-        alert("Permissions denied! Cannot proceed safely.");
-        btn.innerHTML = "START JOURNEY";
+        alert("Camera and Microphone permissions are required for the AI Scanner to work.");
+        btn.innerHTML = "GRANT ACCESS & START";
+        btn.disabled = false;
     }
 };
 
