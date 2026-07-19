@@ -24,10 +24,10 @@ def anyio_backend():
         "This resembles a forced shoe-shine service scam.",
     ),
     (
-        "Money exchange shop gave me fake bills and a bad rate",
+        "Money exchange shop offers only 500k VND for 50 dollars",
         "money_exchange",
         "high",
-        "This resembles a money exchange scam.",
+        "This resembles a severe exchange-rate scam.",
     ),
 ])
 async def test_guardian_demo_scenarios_are_deterministic(description, pattern_id, severity, expected):
@@ -54,7 +54,7 @@ def test_guardian_api_returns_demo_scam_assessments(monkeypatch):
     for description, pattern_id in [
         ("Taxi driver says the meter is broken and wants 800k to the airport", "taxi_meter"),
         ("A shoe shiner grabbed my shoes and demands 500k", "forced_service"),
-        ("Money exchange shop gave me fake bills and a bad rate", "money_exchange"),
+        ("Money exchange shop offers only 500k VND for 50 dollars", "money_exchange"),
     ]:
         response = client.post("/api/v1/analyze-situation", json={
             "description": description,

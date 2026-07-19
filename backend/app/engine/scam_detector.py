@@ -177,12 +177,12 @@ DEMO_GUARDIAN_SCENARIOS = {
             "Move toward a hotel, shop, or police officer and call 113 if blocked.",
         ],
     },
-    "money exchange shop gave me fake bills and a bad rate": {
+    "money exchange shop offers only 500k vnd for 50 dollars": {
         "pattern_id": "money_exchange",
-        "analysis": "This resembles a money exchange scam.",
+        "analysis": "This resembles a severe exchange-rate scam.",
         "advice": [
-            "Stop the exchange and keep the bills visible as evidence.",
-            "Use a bank or licensed exchange counter, and call 113 if they refuse to return your money.",
+            "Do not accept this exchange rate; 50 USD should be far above 500,000 VND.",
+            "Use a bank or licensed exchange counter, and call 113 if they pressure you.",
         ],
     },
 }
