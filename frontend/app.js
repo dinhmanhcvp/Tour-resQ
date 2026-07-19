@@ -287,8 +287,8 @@ window.stopCameraAndGoHome = function() {
     switchTab('tab-dashboard');
 };
 
-// Extracted logic for analysis
-async function processBase64ImageAndAnalyze(base64Image) {
+// Legacy renderer kept for reference while the scan UI uses the stable renderer below.
+async function processBase64ImageAndAnalyzeLegacy(base64Image) {
     if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
     
     // Pause video if playing
@@ -414,10 +414,245 @@ async function processBase64ImageAndAnalyze(base64Image) {
     }
 }
 
+function getScanElements() {
+    return {
+        overlay: document.getElementById('price-results-overlay'),
+        sheet: document.querySelector('#price-results-overlay .bottom-sheet'),
+        title: document.getElementById('scan-alert-title'),
+        price: document.getElementById('scan-alert-price'),
+        message: document.getElementById('scan-alert-msg'),
+        breakdown: document.getElementById('scan-breakdown'),
+        contribute: document.getElementById('btn-contribute'),
+        retry: document.getElementById('btn-retry'),
+    };
+}
+
+function escapeHtml(value) {
+    return String(value ?? "").replace(/[&<>"']/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+    }[char]));
+}
+
+function setScanSheetTier(tierClass) {
+    const { sheet } = getScanElements();
+    if (!sheet) return;
+    sheet.classList.remove('tier-overpriced', 'tier-danger', 'tier-caution', 'tier-fair', 'tier-unknown', 'tier-loading', 'tier-error');
+    sheet.classList.add(tierClass);
+}
+
+function setScanActions({ canContribute = false, canRetry = false } = {}) {
+    const { contribute, retry } = getScanElements();
+    if (contribute) {
+        contribute.style.display = canContribute ? 'block' : 'none';
+        contribute.disabled = false;
+        contribute.innerHTML = "I PAID THIS";
+    }
+    if (retry) retry.style.display = canRetry ? 'block' : 'none';
+}
+
+function setScanLoading(message = "Extracting items and checking local prices...") {
+    const { overlay, title, price, message: msg, breakdown } = getScanElements();
+    if (overlay) overlay.style.display = 'flex';
+    setScanSheetTier('tier-loading');
+    if (title) title.innerText = "ANALYZING...";
+    if (price) price.innerText = "...";
+    if (msg) msg.innerText = message;
+    if (breakdown) {
+        breakdown.innerHTML = `
+            <div class="scan-loading-block"></div>
+            <div class="scan-loading-block short"></div>
+        `;
+    }
+    setScanActions();
+}
+
+function showScanError(title, message) {
+    const { overlay, title: titleEl, price, message: msg, breakdown } = getScanElements();
+    if (overlay) overlay.style.display = 'flex';
+    setScanSheetTier('tier-error');
+    if (titleEl) titleEl.innerText = title;
+    if (price) price.innerText = "";
+    if (msg) msg.innerText = message;
+    if (breakdown) breakdown.innerHTML = "";
+    setScanActions({ canRetry: true });
+}
+
+function getScanVerdictConfig(verdict) {
+    const configs = {
+        overpriced: {
+            title: "OVERPRICED",
+            tierClass: "tier-danger",
+            adviceTitle: "Action Required",
+            adviceText: "You are being severely overcharged. Do not pay yet. Show the normal price or call Tourist Police at 113 if pressured.",
+            vibrate: [100, 50, 100, 50, 200],
+        },
+        mixed: {
+            title: "MIXED RISK",
+            tierClass: "tier-danger",
+            adviceTitle: "Check Each Item",
+            adviceText: "Some items look risky. Review the breakdown before paying and negotiate only the flagged lines.",
+            vibrate: [100, 50, 100, 50, 200],
+        },
+        slightly_high: {
+            title: "SLIGHTLY HIGH",
+            tierClass: "tier-caution",
+            adviceTitle: "Negotiate",
+            adviceText: "This looks like a tourist premium. Try negotiating down by 20-30%.",
+            vibrate: [100, 50, 100],
+        },
+        insufficient_data: {
+            title: "UNKNOWN",
+            tierClass: "tier-unknown",
+            adviceTitle: "Needs Confirmation",
+            adviceText: "Not enough local data to verify this price. Use your judgment or try a clearer receipt.",
+            canRetry: true,
+        },
+        fair: {
+            title: "FAIR PRICE",
+            tierClass: "tier-fair",
+            adviceTitle: "Safe to Pay",
+            adviceText: "This matches the local price range. You can pay with confidence.",
+            canContribute: true,
+            vibrate: [50, 50],
+        },
+    };
+    return configs[verdict] || configs.insufficient_data;
+}
+
+function formatScanItemPrice(item) {
+    const quantity = Number(item.quantity || 1);
+    const askedPrice = Number(item.asked_price || item.unit_price || 0);
+    const unitPrice = Number(item.unit_price || askedPrice);
+    if (quantity > 1) {
+        return `${quantity}x ${formatCurrency(unitPrice)} = ${formatCurrency(askedPrice)}`;
+    }
+    return formatCurrency(askedPrice);
+}
+
+function renderScanBreakdown(items) {
+    if (!Array.isArray(items) || !items.length) {
+        return `<div class="scan-empty-state">No priced items were detected. Try a clearer photo.</div>`;
+    }
+
+    const rows = items.map(item => {
+        const tier = item.db_tier || 'unknown';
+        const median = Number(item.db_median_price || 0);
+        const meta = [
+            item.item_name_vi ? escapeHtml(item.item_name_vi) : "",
+            median > 0 ? `usual ${formatCurrency(median)}` : "",
+            item.db_sample_count ? `${Number(item.db_sample_count)} samples` : "",
+        ].filter(Boolean).join(" · ");
+        const warning = item.per_weight_warning ? `<div class="scan-item-warning">${escapeHtml(item.per_weight_warning)}</div>` : "";
+
+        return `
+            <div class="scan-item-row">
+                <div class="scan-item-main">
+                    <strong>${escapeHtml(item.item_name || "Unknown item")}</strong>
+                    <span>${meta || "No local benchmark available"}</span>
+                    ${warning}
+                </div>
+                <div class="scan-item-price">
+                    <strong>${formatScanItemPrice(item)}</strong>
+                    <em class="scan-tier-badge scan-tier-${escapeHtml(tier)}">${escapeHtml(tier.replace(/_/g, " ").toUpperCase())}</em>
+                </div>
+            </div>
+        `;
+    }).join("");
+
+    return `<div class="scan-breakdown-title">Item Breakdown</div>${rows}`;
+}
+
+function renderPriceScanResult(result) {
+    const r = result || {};
+    const items = Array.isArray(r.items_checked) ? r.items_checked : [];
+    const verdict = r.overall_verdict || 'insufficient_data';
+    const config = getScanVerdictConfig(verdict);
+    const { title, price, message, breakdown } = getScanElements();
+
+    window.lastScannedItems = items;
+    setScanSheetTier(config.tierClass);
+    if (title) title.innerText = config.title;
+    if (price) price.innerHTML = formatCurrency(Number(r.total_asked || 0));
+    if (message) message.innerText = r.summary || config.adviceText;
+    if (breakdown) {
+        const currencyWarning = r.currency_warning
+            ? `<div class="scan-advice scan-advice-danger"><strong>Currency Warning</strong><span>${escapeHtml(r.currency_warning)}</span></div>`
+            : "";
+        breakdown.innerHTML = `
+            ${currencyWarning}
+            ${renderScanBreakdown(items)}
+            <div class="scan-advice">
+                <strong>${config.adviceTitle}</strong>
+                <span>${config.adviceText}</span>
+            </div>
+        `;
+    }
+    setScanActions({
+        canContribute: Boolean(config.canContribute && items.length),
+        canRetry: Boolean(config.canRetry),
+    });
+    if (config.vibrate && navigator.vibrate) {
+        try { navigator.vibrate(config.vibrate); } catch(e) {}
+    }
+}
+
+async function processBase64ImageAndAnalyze(base64Image) {
+    if (!base64Image) {
+        showScanError("IMAGE ERROR", "Could not prepare the image for scanning.");
+        return;
+    }
+    if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
+
+    const video = document.getElementById('live-camera');
+    if (video) {
+        try { video.pause(); } catch(e) {}
+    }
+
+    setScanLoading();
+
+    try {
+        const res = await fetch(`${API_BASE}/api/v1/check-price-ocr`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                image_base64: base64Image,
+                language: currentLang,
+                region: getRegionFromCoordinates(userLocation.lat, userLocation.lng)
+            })
+        });
+
+        let data = {};
+        try { data = await res.json(); } catch(e) {}
+
+        if (res.status === 429) {
+            showScanError("RATE LIMITED", "Please wait a moment before scanning another image.");
+            return;
+        }
+        if (!res.ok) {
+            showScanError("SCAN ERROR", data.message || `Scan API failed (${res.status}).`);
+            return;
+        }
+        if (data.status === 'success' && data.result) {
+            renderPriceScanResult(data.result);
+            return;
+        }
+        showScanError("SCAN ERROR", data.message || "Failed to analyze image.");
+    } catch(e) {
+        showScanError("NETWORK ERROR", "Ensure backend is running and reachable.");
+    }
+}
+
 window.captureAndAnalyze = async function() {
     const video = document.getElementById('live-camera');
     const canvas = document.getElementById('camera-canvas');
-    if (!video.videoWidth) return;
+    if (!video || !canvas || !video.videoWidth || video.readyState < 2) {
+        showScanError("CAMERA NOT READY", "Open camera access first, or upload a bill image instead.");
+        return;
+    }
 
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
@@ -436,12 +671,14 @@ window.triggerBillUpload = function() {
 window.handleBillUpload = function(event) {
     const file = event.target.files[0];
     if (!file) return;
-    
-    // Show overlay immediately so user knows it's loading
-    const overlay = document.getElementById('price-results-overlay');
-    if (overlay) overlay.style.display = 'flex';
-    const scanTitle = document.getElementById('scan-alert-title');
-    if (scanTitle) scanTitle.innerText = "PROCESSING IMAGE...";
+
+    if (!file.type.startsWith('image/')) {
+        showScanError("IMAGE ERROR", "Please upload a photo or image file.");
+        event.target.value = "";
+        return;
+    }
+
+    setScanLoading("Preparing image for OCR...");
     
     const reader = new FileReader();
     reader.onload = function(e) {
@@ -449,7 +686,10 @@ window.handleBillUpload = function(event) {
         img.onload = function() {
             try {
                 const canvas = document.getElementById('camera-canvas');
-                // Downscale image if too large (prevent mobile crash)
+                if (!canvas) {
+                    showScanError("IMAGE ERROR", "Scanner canvas is missing.");
+                    return;
+                }
                 const MAX_WIDTH = 1200;
                 let width = img.width;
                 let height = img.height;
@@ -467,17 +707,17 @@ window.handleBillUpload = function(event) {
                 const base64Image = canvas.toDataURL('image/jpeg', 0.6).split(',')[1];
                 processBase64ImageAndAnalyze(base64Image);
             } catch (err) {
-                if (scanTitle) scanTitle.innerText = "IMAGE ERROR";
+                showScanError("IMAGE ERROR", "Could not process this image. Try another photo.");
                 console.error(err);
             }
         };
         img.onerror = function() {
-            if (scanTitle) scanTitle.innerText = "INVALID IMAGE";
+            showScanError("INVALID IMAGE", "This file could not be loaded as an image.");
         };
         img.src = e.target.result;
     };
     reader.onerror = function() {
-        alert('Could not read this file.');
+        showScanError("IMAGE ERROR", "Could not read this file.");
     };
     reader.readAsDataURL(file);
     event.target.value = ""; // Reset input

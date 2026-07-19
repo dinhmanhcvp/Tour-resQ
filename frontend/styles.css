@@ -353,9 +353,31 @@ body.sos-siren-active #tab-sos.active { animation: sos-flash 0.45s steps(2, end)
 .breakdown-list {
     overflow-y: auto; flex: 1; padding-right: 5px; margin-bottom: 15px;
 }
+.scan-breakdown-title { color: var(--text-secondary); font-size: 0.78rem; font-weight: 700; letter-spacing: 1px; margin-bottom: 10px; text-transform: uppercase; }
+.scan-item-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
+.scan-item-main { min-width: 0; text-align: left; }
+.scan-item-main strong { display: block; color: var(--text-primary); font-size: 0.98rem; }
+.scan-item-main span { display: block; color: var(--text-secondary); font-size: 0.78rem; margin-top: 4px; }
+.scan-item-price { flex: 0 0 128px; text-align: right; }
+.scan-item-price strong { display: block; color: var(--text-primary); font-size: 0.9rem; line-height: 1.35; }
+.scan-tier-badge { display: inline-flex; margin-top: 6px; padding: 4px 7px; border-radius: 999px; background: rgba(148,163,184,0.16); color: #CBD5E1; font-size: 0.65rem; font-style: normal; font-weight: 800; letter-spacing: 0.5px; }
+.scan-tier-overpriced { background: rgba(239,68,68,0.18); color: #FCA5A5; }
+.scan-tier-slightly_high { background: rgba(245,158,11,0.18); color: #FCD34D; }
+.scan-tier-fair { background: rgba(16,185,129,0.18); color: #6EE7B7; }
+.scan-item-warning { margin-top: 6px; color: #FCD34D; font-size: 0.76rem; }
+.scan-advice { margin-top: 14px; padding: 12px; border-radius: 12px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); text-align: left; }
+.scan-advice strong { display: block; color: var(--text-primary); margin-bottom: 4px; }
+.scan-advice span { color: var(--text-secondary); font-size: 0.88rem; line-height: 1.45; }
+.scan-advice-danger { border-color: rgba(239,68,68,0.45); background: rgba(239,68,68,0.12); }
+.scan-empty-state { color: var(--text-secondary); padding: 18px 0; text-align: center; }
+.scan-loading-block { height: 48px; border-radius: 12px; background: linear-gradient(90deg, rgba(255,255,255,0.06), rgba(255,255,255,0.12), rgba(255,255,255,0.06)); background-size: 220% 100%; animation: scan-loading 1.1s ease-in-out infinite; margin-bottom: 10px; }
+.scan-loading-block.short { width: 72%; }
+@keyframes scan-loading { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
 .tier-danger { color: var(--danger-red); border-top: 2px solid var(--danger-red); }
 .tier-caution { color: #F59E0B; border-top: 2px solid #F59E0B; }
 .tier-fair { color: var(--neon-green); border-top: 2px solid var(--neon-green); }
 .tier-unknown { color: #94A3B8; border-top: 2px solid #94A3B8; }
 .tier-overpriced { color: var(--danger-red); border-top: 2px solid var(--danger-red); }
+.tier-loading { color: #93C5FD; border-top: 2px solid #3B82F6; }
+.tier-error { color: var(--danger-red); border-top: 2px solid var(--danger-red); }
 

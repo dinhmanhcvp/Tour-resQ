@@ -16,8 +16,8 @@ def test_translate_tab_has_manual_text_path_and_cache_bust():
 
     assert "tourist-manual-input" in index_html
     assert "vendor-manual-input" in index_html
-    assert "styles.css?v=35" in index_html
-    assert "app.js?v=35" in index_html
+    assert "styles.css?v=36" in index_html
+    assert "app.js?v=36" in index_html
     assert "window.sendManualLiveMessage" in app_js
     assert "data.price_alert?.should_alert" in app_js
     assert "PRICE WARNING" in app_js
@@ -48,3 +48,22 @@ def test_sos_slide_starts_loud_siren_and_cancel_stops_it():
     assert "stopSOSSiren();" in app_js
     assert "sos-siren-active" in app_js
     assert "@keyframes sos-flash" in styles_css
+
+
+def test_scan_frontend_uses_existing_ocr_api_and_stable_renderer():
+    project_root = Path(__file__).resolve().parents[1]
+    index_html = (project_root / "frontend" / "index.html").read_text(encoding="utf-8")
+    app_js = (project_root / "frontend" / "app.js").read_text(encoding="utf-8")
+    styles_css = (project_root / "frontend" / "styles.css").read_text(encoding="utf-8")
+
+    assert "app.js?v=36" in index_html
+    assert "styles.css?v=36" in index_html
+    assert "/api/v1/check-price-ocr" in app_js
+    assert "image_base64: base64Image" in app_js
+    assert "renderPriceScanResult(data.result)" in app_js
+    assert "function setScanSheetTier" in app_js
+    assert "querySelector('#price-results-overlay .bottom-sheet')" in app_js
+    assert "CAMERA NOT READY" in app_js
+    assert "IMAGE ERROR" in app_js
+    assert ".scan-item-row" in styles_css
+    assert ".scan-tier-badge" in styles_css
